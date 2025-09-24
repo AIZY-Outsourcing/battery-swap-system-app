@@ -11,6 +11,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
+import { track } from "../../../services/analytics";
 
 type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,12 +26,19 @@ const SplashScreen = () => {
 
   const checkAuthStatus = async () => {
     try {
-      // Simulate loading time
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      track({ name: "app_launch" });
+      // Brief delay to show splash
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const isLoggedIn = await AuthService.isLoggedIn();
+      track({
+        name: "auth_state_checked",
+        result: isLoggedIn ? "logged_in" : "logged_out",
+      });
 
       if (isLoggedIn) {
+        // Try refresh / fetch profile
+        await AuthService.getMe();
         // Check if user has completed vehicle setup
         const hasVehicleSetup = await AuthService.hasCompletedVehicleSetup();
 
@@ -69,6 +77,7 @@ const SplashScreen = () => {
         source={require("../../../../assets/icon.png")}
         style={styles.logo}
         resizeMode="contain"
+        accessibilityLabel="BSS Logo"
       />
       <Text style={styles.appName}>BSS Battery Swap</Text>
       <Text style={styles.tagline}>
@@ -97,6 +106,16 @@ const SplashScreen = () => {
             >
               🚀 Demo Mode (Bỏ qua đăng nhập)
             </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.debugButton]}
+            onPress={() => {
+              setIsCheckingAuth(true);
+              setShowDebugButtons(false);
+              checkAuthStatus();
+            }}
+          >
+            <Text style={styles.debugButtonText}>🔁 Thử lại</Text>
           </TouchableOpacity>
         </View>
       ) : null}

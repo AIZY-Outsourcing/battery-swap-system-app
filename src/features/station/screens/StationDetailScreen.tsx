@@ -1,65 +1,52 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
+import { getStationById } from "../../../services/api/StationService";
+import ReserveModal from "../components/ReserveModal";
+import { track } from "../../../services/analytics";
 
-interface Station {
-  id: string;
-  name: string;
-  address: string;
-  distance: string;
-  availableBatteries: number;
-  totalBatteries: number;
-  operatingHours: string;
-  image: string;
-  amenities: string[];
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-}
+export default function StationDetailScreen({ route, navigation }: any) {
+  const { stationId } = route.params as { stationId: string | number };
+  const [station, setStation] = useState<any | null>(null);
+  const [reserveOpen, setReserveOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function StationDetailScreen({ route }: any) {
-  const { stationId } = route.params;
-
-  // Mock data - replace with actual API call
-  const station: Station = {
-    id: stationId,
-    name: "Vinhomes Grand Park, khu 12",
-    address: "Vinhomes Grand Park, Quận 9, TP.HCM",
-    distance: "0.8 km",
-    availableBatteries: 86,
-    totalBatteries: 88,
-    operatingHours: "24/7",
-    image: "https://via.placeholder.com/400x200",
-    amenities: [
-      "Wifi miễn phí",
-      "Toilet",
-      "Máy lạnh",
-      "Camera an ninh",
-      "Gửi xe miễn phí",
-    ],
-    coordinates: {
-      lat: 10.8454,
-      lng: 106.8232,
-    },
-  };
-
-  const handleReserve = () => {
-    // Navigate to ReservationScreen
-    console.log("Navigate to reservation");
-  };
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const s = await getStationById(stationId);
+        if (mounted) {
+          setStation(s);
+          track({ name: "station_view", stationId });
+          setError(null);
+        }
+      } catch (e: any) {
+        if (mounted) setError(e?.message || "Không thể tải thông tin trạm");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [stationId]);
 
   const handleDirections = () => {
-    // Open Google Maps for directions
-    console.log("Open directions");
+    if (!station) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
+    Linking.openURL(url);
+    track({ name: "station_directions", stationId });
   };
 
   return (
@@ -70,122 +57,106 @@ export default function StationDetailScreen({ route }: any) {
       ]}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header Image */}
         <View style={styles.imageContainer}>
-          <Image source={{ uri: station.image }} style={styles.stationImage} />
+          <View style={styles.stationImage} />
           <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>Hoạt động</Text>
+            <Text style={styles.statusText}>
+              {station?.available && station.available > 0
+                ? "Hoạt động"
+                : "Hết pin"}
+            </Text>
           </View>
         </View>
 
-        {/* Station Info */}
         <View style={styles.infoContainer}>
           <Text
             style={[styles.stationName, { color: theme.colors.text.primary }]}
           >
-            {station.name}
+            {loading ? "Đang tải..." : station?.name || "Không có tên"}
           </Text>
-          <Text
-            style={[styles.address, { color: theme.colors.text.secondary }]}
-          >
-            📍 {station.address}
-          </Text>
-          <Text style={[styles.distance, { color: theme.colors.primary }]}>
-            🚶‍♂️ {station.distance} từ vị trí của bạn
-          </Text>
-
-          {/* Battery Status */}
-          <View style={styles.batteryContainer}>
-            <View style={styles.batteryStatus}>
-              <Text
-                style={[styles.batteryCount, { color: theme.colors.success }]}
-              >
-                {station.availableBatteries}
-              </Text>
-              <Text
-                style={[
-                  styles.batteryLabel,
-                  { color: theme.colors.text.secondary },
-                ]}
-              >
-                Pin sẵn sàng
-              </Text>
-            </View>
-            <View style={styles.batteryStatus}>
-              <Text
-                style={[
-                  styles.batteryCount,
-                  { color: theme.colors.text.primary },
-                ]}
-              >
-                {station.totalBatteries}
-              </Text>
-              <Text
-                style={[
-                  styles.batteryLabel,
-                  { color: theme.colors.text.secondary },
-                ]}
-              >
-                Tổng pin
-              </Text>
-            </View>
-            <View style={styles.batteryStatus}>
-              <Text
-                style={[
-                  styles.batteryCount,
-                  { color: theme.colors.text.primary },
-                ]}
-              >
-                {station.operatingHours}
-              </Text>
-              <Text
-                style={[
-                  styles.batteryLabel,
-                  { color: theme.colors.text.secondary },
-                ]}
-              >
-                Giờ hoạt động
-              </Text>
-            </View>
-          </View>
-
-          {/* Amenities */}
-          <View style={styles.amenitiesContainer}>
+          {!!station?.address && (
             <Text
-              style={[
-                styles.sectionTitle,
-                { color: theme.colors.text.primary },
-              ]}
+              style={[styles.address, { color: theme.colors.text.secondary }]}
             >
-              Tiện ích
+              📍 {station.address}
             </Text>
-            {station.amenities.map((amenity, index) => (
-              <View key={index} style={styles.amenityItem}>
-                <Text style={styles.amenityIcon}>✓</Text>
+          )}
+
+          {error ? (
+            <Text
+              style={[styles.address, { color: theme.colors.text.secondary }]}
+            >
+              {error}
+            </Text>
+          ) : (
+            <View style={styles.batteryContainer}>
+              <View style={styles.batteryStatus}>
+                <Text
+                  style={[styles.batteryCount, { color: theme.colors.success }]}
+                >
+                  {station?.available ?? 0}
+                </Text>
                 <Text
                   style={[
-                    styles.amenityText,
+                    styles.batteryLabel,
                     { color: theme.colors.text.secondary },
                   ]}
                 >
-                  {amenity}
+                  Pin sẵn sàng
                 </Text>
               </View>
-            ))}
-          </View>
+              <View style={styles.batteryStatus}>
+                <Text
+                  style={[
+                    styles.batteryCount,
+                    { color: theme.colors.text.primary },
+                  ]}
+                >
+                  {station?.capacity ?? 0}
+                </Text>
+                <Text
+                  style={[
+                    styles.batteryLabel,
+                    { color: theme.colors.text.secondary },
+                  ]}
+                >
+                  Tổng pin
+                </Text>
+              </View>
+              <View style={styles.batteryStatus}>
+                <Text
+                  style={[
+                    styles.batteryCount,
+                    { color: theme.colors.text.primary },
+                  ]}
+                >
+                  {station?.openHours || ""}
+                </Text>
+                <Text
+                  style={[
+                    styles.batteryLabel,
+                    { color: theme.colors.text.secondary },
+                  ]}
+                >
+                  Giờ hoạt động
+                </Text>
+              </View>
+            </View>
+          )}
 
-          {/* Action Buttons */}
           <View style={styles.actionContainer}>
             <TouchableOpacity
               style={[
                 styles.actionButton,
                 { backgroundColor: theme.colors.primary },
               ]}
-              onPress={handleReserve}
+              onPress={() => {
+                setReserveOpen(true);
+                track({ name: "station_reserve_open", stationId });
+              }}
             >
-              <Text style={styles.primaryButtonText}>Đặt trạm ngay</Text>
+              <Text style={styles.primaryButtonText}>Đặt pin</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={[
                 styles.actionButton,
@@ -203,25 +174,46 @@ export default function StationDetailScreen({ route }: any) {
                 Chỉ đường
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.outlineButton,
+                { borderColor: theme.colors.primary },
+              ]}
+              onPress={() => {
+                navigation.getParent()?.navigate("QRScan");
+                track({ name: "station_qr_open", stationId });
+              }}
+            >
+              <Text
+                style={[
+                  styles.outlineButtonText,
+                  { color: theme.colors.primary },
+                ]}
+              >
+                Quét QR
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+
+      {station && (
+        <ReserveModal
+          visible={reserveOpen}
+          stationName={station.name}
+          stationId={String(station.id)}
+          onClose={() => setReserveOpen(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  imageContainer: {
-    position: "relative",
-  },
-  stationImage: {
-    width: "100%",
-    height: 200,
-    backgroundColor: "#f0f0f0",
-  },
+  container: { flex: 1 },
+  imageContainer: { position: "relative" },
+  stationImage: { width: "100%", height: 200, backgroundColor: "#e9eef5" },
   statusBadge: {
     position: "absolute",
     top: 16,
@@ -231,27 +223,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  infoContainer: {
-    padding: 20,
-  },
-  stationName: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  address: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  distance: {
-    fontSize: 14,
-    marginBottom: 24,
-  },
+  statusText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  infoContainer: { padding: 20 },
+  stationName: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
+  address: { fontSize: 16, marginBottom: 24 },
   batteryContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -260,59 +235,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 24,
   },
-  batteryStatus: {
-    alignItems: "center",
-  },
-  batteryCount: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  batteryLabel: {
-    fontSize: 12,
-    textAlign: "center",
-  },
-  amenitiesContainer: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  amenityItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  amenityIcon: {
-    color: "#28c76f",
-    fontSize: 16,
-    marginRight: 12,
-    width: 20,
-  },
-  amenityText: {
-    fontSize: 16,
-  },
-  actionContainer: {
-    gap: 12,
-  },
-  actionButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  outlineButton: {
-    backgroundColor: "transparent",
-    borderWidth: 2,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  outlineButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  batteryStatus: { alignItems: "center" },
+  batteryCount: { fontSize: 20, fontWeight: "700", marginBottom: 4 },
+  batteryLabel: { fontSize: 12, textAlign: "center" },
+  actionContainer: { gap: 12 },
+  actionButton: { paddingVertical: 16, borderRadius: 12, alignItems: "center" },
+  outlineButton: { backgroundColor: "transparent", borderWidth: 2 },
+  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  outlineButtonText: { fontSize: 16, fontWeight: "600" },
 });

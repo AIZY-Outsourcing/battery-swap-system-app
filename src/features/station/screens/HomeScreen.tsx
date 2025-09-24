@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,14 @@ import { ThemedCard, ThemedButton } from "../../../components";
 import { LinearGradient } from "expo-linear-gradient";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { ScrollView } from "react-native";
+import { useStations } from "../hooks/useStations";
+import StationCard from "../../../components/StationCard";
+import { useAuthStore } from "../../../store/authStore";
+import LoadingSpinner from "../../../components/ui/LoadingSpinner";
+
+type DistanceOpt = 5 | 10 | 20;
+type BatteryOpt = "A" | "B" | "C" | "";
+type SortOpt = "nearest" | "rating";
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MainTabParamList, "Home">,
@@ -29,159 +37,61 @@ const { width } = Dimensions.get("window");
 export default function HomeScreen({ navigation }: Props) {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("all");
+  const [distance, setDistance] = useState<DistanceOpt>(10);
+  const [batteryType, setBatteryType] = useState<BatteryOpt>("");
+  const [sort, setSort] = useState<SortOpt>("nearest");
+  const credits = useAuthStore((s) => s.user?.swapCredits ?? 0);
 
-  // Mock stations data
-  const stations = [
-    {
-      id: "1",
-      name: "FPT Tower Station",
-      address: "17 Duy Tân, Dịch Vọng Hậu, Cầu Giấy",
-      distance: "0.5 km",
-      availableBatteries: 8,
-      totalSlots: 12,
-      batteryTypes: ["A", "B"],
-      status: "active",
-    },
-    {
-      id: "2",
-      name: "Keangnam Station",
-      address: "72 Phạm Hùng, Nam Từ Liêm",
-      distance: "1.2 km",
-      availableBatteries: 3,
-      totalSlots: 8,
-      batteryTypes: ["A"],
-      status: "active",
-    },
-    {
-      id: "3",
-      name: "Lotte Tower Station",
-      address: "54 Liễu Giai, Ba Đình",
-      distance: "2.1 km",
-      availableBatteries: 0,
-      totalSlots: 10,
-      batteryTypes: ["A", "B"],
-      status: "maintenance",
-    },
-  ];
-
-  const filters = [
-    { id: "all", label: "Tất cả", icon: "🏠" },
-    { id: "nearby", label: "Gần nhất", icon: "📍" },
-    { id: "available", label: "Có pin", icon: "🔋" },
-    { id: "typeA", label: "Pin A", icon: "⚡" },
-    { id: "typeB", label: "Pin B", icon: "🔌" },
-  ];
-
-  const filteredStations = stations.filter((station) => {
-    const matchesSearch =
-      station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      station.address.toLowerCase().includes(searchQuery.toLowerCase());
-
-    switch (selectedFilter) {
-      case "nearby":
-        return matchesSearch && parseFloat(station.distance) <= 1.0;
-      case "available":
-        return matchesSearch && station.availableBatteries > 0;
-      case "typeA":
-        return matchesSearch && station.batteryTypes.includes("A");
-      case "typeB":
-        return matchesSearch && station.batteryTypes.includes("B");
-      default:
-        return matchesSearch;
-    }
+  const { data, isLoading, isError, refetch } = useStations({
+    q: searchQuery,
+    distance_km: distance,
+    battery_type: batteryType || undefined,
+    sort,
+    enableDistanceCompute: true,
   });
+  const stations = data || [];
 
-  const renderStationCard = ({
-    item: station,
-  }: {
-    item: (typeof stations)[0];
-  }) => (
-    <ThemedCard style={styles.stationCard}>
-      <TouchableOpacity
-        onPress={() => {
-          // @ts-ignore - We'll fix navigation types later
+  const renderStationCard = ({ item }: { item: any }) => (
+    <View style={{ marginBottom: 12 }}>
+      <StationCard
+        station={item}
+        onPress={() =>
           navigation
             .getParent()
-            ?.navigate("StationDetails", { stationId: station.id });
+            ?.navigate("StationDetails", { stationId: String(item.id) })
+        }
+      />
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 8,
+          paddingHorizontal: 20,
+          marginTop: 6,
         }}
       >
-        <View style={styles.stationHeader}>
-          <View style={styles.stationInfo}>
-            <Text
-              style={[styles.stationName, { color: theme.colors.text.primary }]}
-            >
-              {station.name}
-            </Text>
-            <Text
-              style={[
-                styles.stationAddress,
-                { color: theme.colors.text.secondary },
-              ]}
-            >
-              📍 {station.address}
-            </Text>
-            <Text
-              style={[
-                styles.stationDistance,
-                { color: theme.colors.text.tertiary },
-              ]}
-            >
-              {station.distance}
-            </Text>
-          </View>
-          <View style={styles.stationStatus}>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor:
-                    station.status === "active"
-                      ? theme.colors.success
-                      : theme.colors.warning,
-                },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {station.status === "active" ? "Hoạt động" : "Bảo trì"}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.stationStats}>
-          <View style={styles.batteryInfo}>
-            <Text
-              style={[
-                styles.batteryCount,
-                { color: theme.colors.text.primary },
-              ]}
-            >
-              🔋 {station.availableBatteries}/{station.totalSlots}
-            </Text>
-            <Text
-              style={[
-                styles.batteryTypes,
-                { color: theme.colors.text.secondary },
-              ]}
-            >
-              Pin: {station.batteryTypes.join(", ")}
-            </Text>
-          </View>
-          <ThemedButton
-            title="Đặt chỗ"
-            size="sm"
-            variant="primary"
-            onPress={() => {
-              // @ts-ignore - We'll fix navigation types later
-              navigation
-                .getParent()
-                ?.navigate("ReservationConfirm", { stationId: station.id });
-            }}
-          />
-        </View>
-      </TouchableOpacity>
-    </ThemedCard>
+        <ThemedButton
+          title="Chi tiết"
+          size="sm"
+          variant="secondary"
+          onPress={() =>
+            navigation
+              .getParent()
+              ?.navigate("StationDetails", { stationId: String(item.id) })
+          }
+        />
+        <ThemedButton
+          title={credits > 0 ? "Đặt trước" : "Hết lượt"}
+          size="sm"
+          variant="primary"
+          disabled={credits <= 0 || item.available <= 0}
+          onPress={() =>
+            navigation
+              .getParent()
+              ?.navigate("ReservationConfirm", { stationId: String(item.id) })
+          }
+        />
+      </View>
+    </View>
   );
 
   return (
@@ -221,59 +131,147 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       </LinearGradient>
 
-      {/* Filter Chips */}
+      {/* Filter bar: distance, battery type, sort */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterContainer}
         contentContainerStyle={styles.filterContent}
       >
-        {filters.map((filter) => (
+        {([5, 10, 20] as DistanceOpt[]).map((d) => (
           <TouchableOpacity
-            key={filter.id}
+            key={d}
             style={[
               styles.filterChip,
-              selectedFilter === filter.id && {
-                backgroundColor: theme.colors.primary,
-              },
+              distance === d && { backgroundColor: theme.colors.primary },
             ]}
-            onPress={() => setSelectedFilter(filter.id)}
+            onPress={() => setDistance(d)}
           >
-            <Text style={styles.filterIcon}>{filter.icon}</Text>
+            <Text style={styles.filterIcon}>📏</Text>
             <Text
               style={[
                 styles.filterLabel,
                 {
                   color:
-                    selectedFilter === filter.id
+                    distance === d
                       ? theme.colors.surface.default
                       : theme.colors.text.secondary,
                 },
               ]}
             >
-              {filter.label}
+              {d} km
+            </Text>
+          </TouchableOpacity>
+        ))}
+        {(["", "A", "B", "C"] as BatteryOpt[]).map((b) => (
+          <TouchableOpacity
+            key={b || "all"}
+            style={[
+              styles.filterChip,
+              batteryType === b && { backgroundColor: theme.colors.primary },
+            ]}
+            onPress={() => setBatteryType(b)}
+          >
+            <Text style={styles.filterIcon}>🔋</Text>
+            <Text
+              style={[
+                styles.filterLabel,
+                {
+                  color:
+                    batteryType === b
+                      ? theme.colors.surface.default
+                      : theme.colors.text.secondary,
+                },
+              ]}
+            >
+              {b ? `Pin ${b}` : "Tất cả"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        {(["nearest", "rating"] as SortOpt[]).map((s) => (
+          <TouchableOpacity
+            key={s}
+            style={[
+              styles.filterChip,
+              sort === s && { backgroundColor: theme.colors.primary },
+            ]}
+            onPress={() => setSort(s)}
+          >
+            <Text style={styles.filterIcon}>
+              {s === "nearest" ? "📍" : "⭐"}
+            </Text>
+            <Text
+              style={[
+                styles.filterLabel,
+                {
+                  color:
+                    sort === s
+                      ? theme.colors.surface.default
+                      : theme.colors.text.secondary,
+                },
+              ]}
+            >
+              {s === "nearest" ? "Gần nhất" : "Đánh giá"}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Stations List */}
-      <FlatList
-        data={filteredStations}
-        renderItem={renderStationCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.stationsList}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={() => (
-          <ThemedCard style={styles.emptyCard}>
-            <Text
-              style={[styles.emptyText, { color: theme.colors.text.secondary }]}
-            >
-              Không tìm thấy trạm nào phù hợp 🔍
-            </Text>
-          </ThemedCard>
-        )}
-      />
+      {/* Content states */}
+      {isLoading ? (
+        <LoadingSpinner text="Đang tải danh sách trạm..." />
+      ) : isError ? (
+        <ThemedCard style={styles.emptyCard}>
+          <Text
+            style={[styles.emptyText, { color: theme.colors.text.secondary }]}
+          >
+            Không tải được danh sách. Kiểm tra mạng và thử lại.
+          </Text>
+          <ThemedButton
+            title="Thử lại"
+            onPress={() => refetch()}
+            variant="primary"
+          />
+        </ThemedCard>
+      ) : (
+        <FlatList
+          data={stations}
+          renderItem={renderStationCard}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.stationsList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => (
+            <ThemedCard style={styles.emptyCard}>
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: theme.colors.text.secondary },
+                ]}
+              >
+                Không có trạm phù hợp
+              </Text>
+            </ThemedCard>
+          )}
+        />
+      )}
+
+      {/* FAB: open Map screen */}
+      <TouchableOpacity
+        style={{
+          position: "absolute",
+          bottom: 24,
+          right: 20,
+          backgroundColor: theme.colors.primary,
+          borderRadius: 28,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
+        onPress={() => navigation.getParent()?.navigate("StationMap")}
+        accessibilityRole="button"
+        accessibilityLabel="Mở bản đồ"
+      >
+        <Text style={{ color: "#fff", fontWeight: "700" }}>Bản đồ 🗺️</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -343,11 +341,6 @@ const styles = StyleSheet.create({
   stationsList: {
     padding: 20,
     paddingTop: 0,
-  },
-  stationCard: {
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
   },
   stationHeader: {
     flexDirection: "row",

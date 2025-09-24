@@ -41,7 +41,7 @@ export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Register: undefined;
-  OTPVerification: { phone: string; email: string };
+  OTPVerification: { phone: string; email?: string };
   VehicleSetup: { userId: string };
 };
 

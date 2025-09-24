@@ -15,6 +15,7 @@ import { Input, ThemedButton, ThemedCard } from "../../../components";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
+import { track } from "../../../services/analytics";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
@@ -32,9 +33,25 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
 
+    // Accept mock demo credentials
+    if (
+      (email === "demo@bss.com" || email === "+84999999999") &&
+      password === "demo123"
+    ) {
+      track({ name: "login_success" });
+      return Alert.alert("Thành công", "Đăng nhập demo", [
+        {
+          text: "Tiếp tục",
+          onPress: () =>
+            navigation.navigate("VehicleSetup", { userId: "demo" }),
+        },
+      ]);
+    }
+
     setIsLoading(true);
     try {
       const { token, user } = await AuthService.simpleLogin(email, password);
+      track({ name: "login_success" });
 
       Alert.alert("Thành công", `Chào mừng ${user.firstName}!`, [
         {
@@ -99,13 +116,13 @@ export default function LoginScreen({ navigation }: Props) {
           <Text
             style={[styles.formTitle, { color: theme.colors.text.primary }]}
           >
-            Sign In
+            Đăng nhập
           </Text>
 
           <View style={styles.form}>
             <Input
-              label="Email Address"
-              placeholder="Enter your email"
+              label="Email / Số điện thoại"
+              placeholder="Nhập email hoặc số điện thoại"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -114,8 +131,8 @@ export default function LoginScreen({ navigation }: Props) {
             />
 
             <Input
-              label="Password"
-              placeholder="Enter your password"
+              label="Mật khẩu"
+              placeholder="Nhập mật khẩu"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -123,7 +140,7 @@ export default function LoginScreen({ navigation }: Props) {
             />
 
             <ThemedButton
-              title={isLoading ? "Signing in..." : "Sign In"}
+              title={isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
               onPress={handleLogin}
               variant="primary"
               fullWidth
@@ -167,7 +184,7 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
 
             <ThemedButton
-              title="📱 Continue with Phone"
+              title="📱 Tiếp tục với số điện thoại"
               onPress={handlePhoneLogin}
               variant="secondary"
               fullWidth
@@ -211,7 +228,7 @@ export default function LoginScreen({ navigation }: Props) {
         {/* Footer */}
         <View style={styles.footer}>
           <ThemedButton
-            title="Don't have an account? Sign Up"
+            title="Chưa có tài khoản? Đăng ký"
             onPress={() => navigation.navigate("Register")}
             variant="tertiary"
             style={{ marginBottom: theme.spacing[2] }}

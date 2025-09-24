@@ -10,6 +10,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
+import { track } from "../../../services/analytics";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 
@@ -50,6 +51,7 @@ export default function RegisterScreen({ navigation }: Props) {
     }
 
     setIsLoading(true);
+    track({ name: "signup_initiated" });
 
     try {
       const { user } = await AuthService.simpleRegister({

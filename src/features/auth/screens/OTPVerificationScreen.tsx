@@ -9,13 +9,15 @@ import {
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../../../navigation/types";
+import AuthService from "../../../services/auth/AuthService";
+import { track } from "../../../services/analytics";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "OTPVerification">;
 
 export default function OTPVerificationScreen({ route, navigation }: Props) {
-  const { phone } = route.params;
+  const { phone, email } = route.params as any;
   const [otp, setOtp] = useState("");
-  const [timer, setTimer] = useState(60);
+  const [timer, setTimer] = useState(300); // 5 minutes
   const [canResend, setCanResend] = useState(false);
 
   useEffect(() => {
@@ -32,37 +34,70 @@ export default function OTPVerificationScreen({ route, navigation }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleVerifyOTP = () => {
+  const handleVerifyOTP = async () => {
     if (otp.length !== 6) {
-      Alert.alert("Error", "Please enter a valid 6-digit OTP");
+      Alert.alert("Lỗi", "Vui lòng nhập mã OTP 6 chữ số");
       return;
     }
 
-    // TODO: Implement actual OTP verification
-    Alert.alert("Success", "OTP verification functionality to be implemented");
+    try {
+      const res = await AuthService.verifyOTP(phone, otp);
+      if (res.success) {
+        track({ name: "otp_verified" });
+        const hasToken = !!res.data?.token;
+        if (hasToken && res.data?.user) {
+          // Ready -> go to Main
+          Alert.alert("Thành công", "Xác thực thành công", [
+            {
+              text: "Vào ứng dụng",
+              onPress: () =>
+                navigation.getParent()?.navigate("AppStack" as any),
+            },
+          ]);
+        } else {
+          // Continue to vehicle link/setup
+          const userId = res.data?.user?.id || "temp";
+          Alert.alert("Thành công", "Hãy tiếp tục liên kết phương tiện", [
+            {
+              text: "Tiếp tục",
+              onPress: () => navigation.replace("VehicleSetup", { userId }),
+            },
+          ]);
+        }
+      } else {
+        Alert.alert("Lỗi", res.error?.message || "Mã OTP không hợp lệ");
+      }
+    } catch (e: any) {
+      Alert.alert("Lỗi", e.message || "Không thể xác thực OTP");
+    }
   };
 
-  const handleResendOTP = () => {
+  const handleResendOTP = async () => {
     if (!canResend) return;
-
-    setTimer(60);
-    setCanResend(false);
-    Alert.alert("OTP Sent", "A new OTP has been sent to your phone");
+    try {
+      await AuthService.sendOTP(phone);
+      track({ name: "otp_resend" });
+      setTimer(300);
+      setCanResend(false);
+      Alert.alert("Đã gửi", "Mã OTP mới đã được gửi");
+    } catch {
+      Alert.alert("Lỗi", "Không thể gửi lại OTP");
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Verify Phone</Text>
+        <Text style={styles.title}>Xác thực mã OTP</Text>
         <Text style={styles.subtitle}>
-          We've sent a 6-digit code to {phone}
+          Mã đã gửi đến {email || phone} — nhập 6 chữ số
         </Text>
       </View>
 
       <View style={styles.form}>
         <TextInput
           style={styles.otpInput}
-          placeholder="Enter 6-digit OTP"
+          placeholder="Nhập mã 6 chữ số"
           value={otp}
           onChangeText={setOtp}
           keyboardType="numeric"
@@ -74,21 +109,21 @@ export default function OTPVerificationScreen({ route, navigation }: Props) {
           style={styles.primaryButton}
           onPress={handleVerifyOTP}
         >
-          <Text style={styles.primaryButtonText}>Verify OTP</Text>
+          <Text style={styles.primaryButtonText}>Xác nhận</Text>
         </TouchableOpacity>
 
         <View style={styles.resendContainer}>
           {!canResend ? (
-            <Text style={styles.timerText}>Resend OTP in {timer}s</Text>
+            <Text style={styles.timerText}>Gửi lại mã sau {timer}s</Text>
           ) : (
             <TouchableOpacity onPress={handleResendOTP}>
-              <Text style={styles.resendText}>Resend OTP</Text>
+              <Text style={styles.resendText}>Gửi lại mã</Text>
             </TouchableOpacity>
           )}
         </View>
 
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.linkText}>Change Phone Number</Text>
+          <Text style={styles.linkText}>Thay đổi số/email</Text>
         </TouchableOpacity>
       </View>
     </View>

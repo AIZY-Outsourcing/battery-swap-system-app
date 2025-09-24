@@ -1,43 +1,19 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ApiResponse, LoginForm, RegisterForm, User } from "../../types";
-
-const API_BASE_URL = "https://api.bss-app.com"; // Replace with actual API URL
+import { api, clearSecureToken, getSecureToken, setSecureToken } from "../api";
 
 class AuthService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = `${API_BASE_URL}/auth`;
-  }
+  private baseUrl: string = "/auth";
 
   async login(
     credentials: LoginForm
   ): Promise<ApiResponse<{ user: User; token: string }>> {
     try {
-      // TODO: Implement actual API call
-      // const response = await fetch(`${this.baseUrl}/login`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(credentials),
-      // });
-      // return await response.json();
-
-      // Mock response for now
-      return {
-        success: true,
-        data: {
-          user: {
-            id: "1",
-            firstName: "John",
-            lastName: "Doe",
-            email: credentials.email,
-            phone: "+1234567890",
-            createdAt: "2024-01-01T00:00:00Z",
-            membershipLevel: "gold",
-          },
-          token: "mock-jwt-token",
-        },
-      };
+      const res = await api.post(`${this.baseUrl}/login`, credentials);
+      const { token, user } = res.data as { token: string; user: User };
+      await setSecureToken(token);
+      await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
+      return { success: true, data: { token, user } } as any;
     } catch (error) {
       return {
         success: false,
@@ -53,22 +29,14 @@ class AuthService {
     userData: RegisterForm
   ): Promise<ApiResponse<{ user: User; token: string }>> {
     try {
-      // TODO: Implement actual API call
-      return {
-        success: true,
-        data: {
-          user: {
-            id: "1",
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            email: userData.email,
-            phone: userData.phone,
-            createdAt: new Date().toISOString(),
-            membershipLevel: "bronze",
-          },
-          token: "mock-jwt-token",
-        },
-      };
+      const res = await api.post(`${this.baseUrl}/register`, userData);
+      const { token, user } = res.data as { token: string; user: User };
+      // Some backends only return success and email; handle both
+      if (token && user) {
+        await setSecureToken(token);
+        await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
+      }
+      return { success: true, data: { token, user } } as any;
     } catch (error) {
       return {
         success: false,
@@ -82,11 +50,8 @@ class AuthService {
 
   async sendOTP(phone: string): Promise<ApiResponse<{ otpSent: boolean }>> {
     try {
-      // TODO: Implement actual API call
-      return {
-        success: true,
-        data: { otpSent: true },
-      };
+      const res = await api.post(`${this.baseUrl}/send-otp`, { phone });
+      return { success: true, data: res.data };
     } catch (error) {
       return {
         success: false,
@@ -103,26 +68,12 @@ class AuthService {
     otp: string
   ): Promise<ApiResponse<{ user: User; token: string }>> {
     try {
-      // TODO: Implement actual API call
-      if (otp === "123456") {
-        return {
-          success: true,
-          data: {
-            user: {
-              id: "1",
-              firstName: "John",
-              lastName: "Doe",
-              email: "john.doe@email.com",
-              phone,
-              createdAt: "2024-01-01T00:00:00Z",
-              membershipLevel: "gold",
-            },
-            token: "mock-jwt-token",
-          },
-        };
-      } else {
-        throw new Error("Invalid OTP");
-      }
+      const res = await api.post(`${this.baseUrl}/verify-otp`, { phone, otp });
+      const { token, user } = res.data as { token?: string; user?: User };
+      if (token) await setSecureToken(token);
+      if (user)
+        await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
+      return { success: true, data: { token, user } } as any;
     } catch (error) {
       return {
         success: false,
@@ -136,11 +87,9 @@ class AuthService {
 
   async logout(): Promise<ApiResponse<{}>> {
     try {
-      // TODO: Implement actual API call
-      return {
-        success: true,
-        data: {},
-      };
+      await clearSecureToken();
+      await AsyncStorage.removeItem(AuthService.USER_KEY);
+      return { success: true, data: {} };
     } catch (error) {
       return {
         success: false,
@@ -154,11 +103,10 @@ class AuthService {
 
   async refreshToken(token: string): Promise<ApiResponse<{ token: string }>> {
     try {
-      // TODO: Implement actual API call
-      return {
-        success: true,
-        data: { token: "new-mock-jwt-token" },
-      };
+      const res = await api.post(`${this.baseUrl}/refresh`, { token });
+      const newToken = (res.data as any)?.token;
+      if (newToken) await setSecureToken(newToken);
+      return { success: true, data: { token: newToken } } as any;
     } catch (error) {
       return {
         success: false,
@@ -199,8 +147,8 @@ class AuthService {
 
     const mockToken = "mock_token_" + Date.now();
 
-    // Save to AsyncStorage
-    await AsyncStorage.setItem(AuthService.TOKEN_KEY, mockToken);
+    // Save token securely and user in storage
+    await setSecureToken(mockToken);
     await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(mockUser));
 
     return { token: mockToken, user: mockUser };
@@ -233,8 +181,8 @@ class AuthService {
 
     const mockToken = "mock_token_" + Date.now();
 
-    // Save to AsyncStorage
-    await AsyncStorage.setItem(AuthService.TOKEN_KEY, mockToken);
+    // Save token securely and user in storage
+    await setSecureToken(mockToken);
     await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(mockUser));
 
     return { token: mockToken, user: mockUser };
@@ -242,7 +190,7 @@ class AuthService {
 
   async isLoggedIn(): Promise<boolean> {
     try {
-      const token = await AsyncStorage.getItem(AuthService.TOKEN_KEY);
+      const token = await getSecureToken();
       const user = await AsyncStorage.getItem(AuthService.USER_KEY);
       return !!(token && user);
     } catch (error) {
@@ -260,7 +208,7 @@ class AuthService {
   }
 
   async clearAuth(): Promise<void> {
-    await AsyncStorage.removeItem(AuthService.TOKEN_KEY);
+    await clearSecureToken();
     await AsyncStorage.removeItem(AuthService.USER_KEY);
   }
 
@@ -293,6 +241,22 @@ class AuthService {
 
     await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
     return user;
+  }
+
+  async getMe(): Promise<User | null> {
+    try {
+      const res = await api.get(`${this.baseUrl}/me`);
+      const user = res.data as User;
+      await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
+      return user;
+    } catch (err: any) {
+      // If unauthorized, clear token
+      const status = err?.response?.status;
+      if (status === 401) {
+        await this.clearAuth();
+      }
+      return null;
+    }
   }
 }
 

@@ -7,6 +7,23 @@ export interface User {
   phone: string;
   createdAt: string;
   membershipLevel: "bronze" | "silver" | "gold" | "platinum";
+  vehicles?: Array<{
+    id?: string;
+    make?: string;
+    model?: string;
+    year?: number | string;
+    licensePlate?: string;
+    vin?: string;
+    batteryType?: string;
+  }>;
+  swapCredits?: number;
+  vehicle?: {
+    make: string;
+    model: string;
+    year: string;
+    licensePlate: string;
+    batteryType: string;
+  };
 }
 
 // Station types

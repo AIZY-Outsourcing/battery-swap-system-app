@@ -1,92 +1,99 @@
-import { ApiResponse, Station } from "../../types";
+import { api } from ".";
+import { stations as mockStations } from "../../data/stations";
+import type { Station as StationDto } from "../../types/station";
 
-const API_BASE_URL = "https://api.bss-app.com"; // Replace with actual API URL
+type ListParams = {
+  q?: string;
+  distance_km?: number;
+  battery_type?: string; // A | B | C
+};
 
-class StationService {
-  private baseUrl: string;
+// Map API response into our Station type if needed
+function normalizeStation(s: any): StationDto {
+  return {
+    id: Number(s.id),
+    name: s.name,
+    address: s.address,
+    lat: s.lat ?? s.latitude ?? s.coordinates?.latitude ?? 0,
+    lng: s.lng ?? s.longitude ?? s.coordinates?.longitude ?? 0,
+    openHours:
+      s.openHours ??
+      `${s.operatingHours?.open ?? "07:00"} - ${
+        s.operatingHours?.close ?? "21:00"
+      }`,
+    available: s.available ?? s.availableSlots ?? 0,
+    capacity: s.capacity ?? s.totalSlots ?? 0,
+    charging: s.charging ?? 0,
+    maintenance: s.maintenance ?? 0,
+    type: s.type ?? "station",
+    rating: s.rating ?? undefined,
+    distanceKm: s.distanceKm ?? undefined,
+  };
+}
 
-  constructor() {
-    this.baseUrl = `${API_BASE_URL}/stations`;
+export async function listStations(
+  params: ListParams = {}
+): Promise<StationDto[]> {
+  try {
+    const res = await api.get("/stations", { params });
+    const items = Array.isArray(res.data) ? res.data : res.data?.data || [];
+    return items.map(normalizeStation);
+  } catch (e) {
+    // Fallback to mock
+    return mockStations.map((s) => ({ ...s }));
   }
+}
 
-  async getNearbyStations(
-    latitude: number,
-    longitude: number,
-    radius: number = 10
-  ): Promise<ApiResponse<Station[]>> {
-    try {
-      // TODO: Implement actual API call
-      // const response = await fetch(
-      //   `${this.baseUrl}/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`
-      // );
-      // return await response.json();
-
-      // Mock data for now
-      const mockStations: Station[] = [
-        {
-          id: "1",
-          name: "Downtown Station",
-          address: "123 Main St, Downtown",
-          coordinates: { latitude: 40.7128, longitude: -74.006 },
-          distance: "0.5 km",
-          availableSlots: 3,
-          totalSlots: 6,
-          status: "available",
-          amenities: ["WiFi", "Coffee", "Restroom"],
-          operatingHours: { open: "06:00", close: "22:00" },
-        },
-        {
-          id: "2",
-          name: "Mall Station",
-          address: "456 Shopping Center",
-          coordinates: { latitude: 40.7589, longitude: -73.9851 },
-          distance: "1.2 km",
-          availableSlots: 0,
-          totalSlots: 4,
-          status: "busy",
-          amenities: ["WiFi", "Shopping"],
-          operatingHours: { open: "08:00", close: "20:00" },
-        },
-      ];
-
-      return {
-        success: true,
-        data: mockStations,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: "STATIONS_FETCH_FAILED",
-          message: "Failed to fetch nearby stations",
-        },
-      };
-    }
+export async function getStationById(id: number | string): Promise<StationDto> {
+  try {
+    const res = await api.get(`/stations/${id}`);
+    const data = res.data?.data ?? res.data;
+    return normalizeStation(data);
+  } catch (e) {
+    const found = mockStations.find((s) => String(s.id) === String(id));
+    if (!found) throw e;
+    return { ...found };
   }
+}
 
-  async getStationById(stationId: string): Promise<ApiResponse<Station>> {
+export async function reserveStation(
+  id: number | string,
+  payload: { vehicle_id: number | string; eta_minutes: number }
+): Promise<{
+  reservationId: string | number;
+  reserved_at: string;
+  expired_at: string;
+}> {
+  try {
+    const res = await api.post(`/stations/${id}/reserve`, payload);
+    const data = res.data?.data ?? res.data;
+    return data;
+  } catch (e) {
+    // Mock reservation success with short expiry for demo
+    const now = new Date();
+    const reserved_at = now.toISOString();
+    const expired_at = new Date(now.getTime() + 2 * 60 * 1000).toISOString(); // 2 minutes demo
+    return {
+      reservationId: Math.floor(Math.random() * 100000),
+      reserved_at,
+      expired_at,
+    };
+  }
+}
+
+// Backward-compatible class wrapper (if other parts import default)
+class StationServiceCompat {
+  async getNearbyStations(lat: number, lng: number, radius: number = 10) {
+    const data = await listStations({ distance_km: radius });
+    return { success: true, data } as const;
+  }
+  async getStationById(stationId: string) {
     try {
-      // TODO: Implement actual API call
-      const mockStation: Station = {
-        id: stationId,
-        name: "Downtown Station",
-        address: "123 Main St, Downtown",
-        coordinates: { latitude: 40.7128, longitude: -74.006 },
-        distance: "0.5 km",
-        availableSlots: 3,
-        totalSlots: 6,
-        status: "available",
-        amenities: ["WiFi", "Coffee", "Restroom"],
-        operatingHours: { open: "06:00", close: "22:00" },
-      };
-
+      const data = await getStationById(stationId);
+      return { success: true, data } as const;
+    } catch {
       return {
-        success: true,
-        data: mockStation,
-      };
-    } catch (error) {
-      return {
-        success: false,
+        success: false as const,
         error: {
           code: "STATION_FETCH_FAILED",
           message: "Failed to fetch station details",
@@ -94,78 +101,22 @@ class StationService {
       };
     }
   }
-
-  async searchStations(query: string): Promise<ApiResponse<Station[]>> {
-    try {
-      // TODO: Implement actual API call
-      const mockStations: Station[] = [
-        {
-          id: "1",
-          name: "Downtown Station",
-          address: "123 Main St, Downtown",
-          coordinates: { latitude: 40.7128, longitude: -74.006 },
-          availableSlots: 3,
-          totalSlots: 6,
-          status: "available",
-          amenities: ["WiFi", "Coffee", "Restroom"],
-          operatingHours: { open: "06:00", close: "22:00" },
-        },
-      ];
-
-      return {
-        success: true,
-        data: mockStations.filter(
-          (station) =>
-            station.name.toLowerCase().includes(query.toLowerCase()) ||
-            station.address.toLowerCase().includes(query.toLowerCase())
-        ),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: "STATIONS_SEARCH_FAILED",
-          message: "Failed to search stations",
-        },
-      };
-    }
+  async searchStations(query: string) {
+    const data = await listStations({ q: query });
+    return { success: true, data } as const;
   }
-
-  async getStationAvailability(
-    stationId: string,
-    date: string
-  ): Promise<ApiResponse<{ availableSlots: string[] }>> {
-    try {
-      // TODO: Implement actual API call
-      const mockSlots = [
-        "09:00",
-        "09:30",
-        "10:00",
-        "10:30",
-        "11:00",
-        "11:30",
-        "12:00",
-        "12:30",
-        "13:00",
-        "13:30",
-        "14:00",
-        "14:30",
-      ];
-
-      return {
-        success: true,
-        data: { availableSlots: mockSlots },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: "AVAILABILITY_FETCH_FAILED",
-          message: "Failed to fetch station availability",
-        },
-      };
-    }
+  async getStationAvailability(stationId: string, date: string) {
+    const availableSlots = [
+      "09:00",
+      "09:30",
+      "10:00",
+      "10:30",
+      "11:00",
+      "11:30",
+      "12:00",
+    ]; // mock
+    return { success: true, data: { availableSlots } } as const;
   }
 }
 
-export default new StationService();
+export default new StationServiceCompat();

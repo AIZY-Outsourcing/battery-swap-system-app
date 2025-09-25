@@ -132,7 +132,7 @@ export default function HomeScreen({ navigation }: Props) {
       </LinearGradient>
 
       {/* Filter bar: distance, battery type, sort */}
-      <ScrollView
+      {/* <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterContainer}
@@ -215,7 +215,7 @@ export default function HomeScreen({ navigation }: Props) {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </ScrollView> */}
 
       {/* Content states */}
       {isLoading ? (

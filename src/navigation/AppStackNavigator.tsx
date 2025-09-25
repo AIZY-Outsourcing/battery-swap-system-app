@@ -31,6 +31,7 @@ import InvoiceScreen from "../features/invoice/screens/InvoiceScreen";
 import RatingHistoryScreen, {
   RatingModal,
 } from "../features/support/screens/RatingScreen";
+import StationMapScreen from "../features/station/screens/StationMapScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -57,7 +58,7 @@ export default function AppStackNavigator() {
       />
       <Stack.Screen
         name="StationMap"
-        component={MapScreen}
+        component={StationMapScreen}
         options={{
           headerShown: true,
           title: "Bản đồ trạm",

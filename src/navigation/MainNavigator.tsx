@@ -16,12 +16,12 @@ export default function MainNavigator() {
       initialRouteName="Home"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#007AFF",
+        tabBarActiveTintColor: "#5D7B6F",
         tabBarInactiveTintColor: "#8E8E93",
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#2a2a2a",
           borderTopWidth: 1,
-          borderTopColor: "#E5E5EA",
+          borderTopColor: "#3a3a3a",
           paddingTop: 8,
           paddingBottom: 8,
           height: 88,
@@ -73,7 +73,7 @@ export default function MainNavigator() {
               🎯
             </Text>
           ),
-          tabBarActiveTintColor: "#FF6B35", // Màu nổi bật cho center tab
+          tabBarActiveTintColor: "#5D7B6F", // Màu nổi bật cho center tab
         }}
       />
 

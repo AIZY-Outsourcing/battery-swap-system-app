@@ -7,21 +7,17 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
+  SafeAreaView,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   MainTabParamList,
   RootStackParamList,
 } from "../../../navigation/types";
-import { useTheme } from "../../../theme/ThemeProvider";
-import { ThemedCard, ThemedButton } from "../../../components";
-import { LinearGradient } from "expo-linear-gradient";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { ScrollView } from "react-native";
 import { useStations } from "../hooks/useStations";
-import StationCard from "../../../components/StationCard";
 import { useAuthStore } from "../../../store/authStore";
-import LoadingSpinner from "../../../components/ui/LoadingSpinner";
 
 type DistanceOpt = 5 | 10 | 20;
 type BatteryOpt = "A" | "B" | "C" | "";
@@ -35,7 +31,6 @@ type Props = CompositeScreenProps<
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen({ navigation }: Props) {
-  const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [distance, setDistance] = useState<DistanceOpt>(10);
   const [batteryType, setBatteryType] = useState<BatteryOpt>("");
@@ -52,84 +47,95 @@ export default function HomeScreen({ navigation }: Props) {
   const stations = data || [];
 
   const renderStationCard = ({ item }: { item: any }) => (
-    <View style={{ marginBottom: 12 }}>
-      <StationCard
-        station={item}
-        onPress={() =>
-          navigation
-            .getParent()
-            ?.navigate("StationDetails", { stationId: String(item.id) })
-        }
-      />
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 8,
-          paddingHorizontal: 20,
-          marginTop: 6,
-        }}
-      >
-        <ThemedButton
-          title="Chi tiết"
-          size="sm"
-          variant="secondary"
-          onPress={() =>
-            navigation
-              .getParent()
-              ?.navigate("StationDetails", { stationId: String(item.id) })
-          }
-        />
-        <ThemedButton
-          title={credits > 0 ? "Đặt trước" : "Hết lượt"}
-          size="sm"
-          variant="primary"
-          disabled={credits <= 0 || item.available <= 0}
-          onPress={() =>
-            navigation
-              .getParent()
-              ?.navigate("ReservationConfirm", { stationId: String(item.id) })
-          }
-        />
+    <View style={styles.stationCard}>
+      <View style={styles.stationHeader}>
+        <View style={styles.stationInfo}>
+          <Text style={styles.stationName}>{item.name}</Text>
+          <Text style={styles.stationAddress}>{item.address}</Text>
+          <Text style={styles.stationDistance}>
+            📍 {item.distance ? `${item.distance.toFixed(1)} km` : "N/A"}
+          </Text>
+        </View>
+        <View style={styles.stationStatus}>
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: item.available > 0 ? "#22c55e" : "#ef4444",
+              },
+            ]}
+          >
+            <Text style={styles.statusText}>
+              {item.available > 0 ? "Có sẵn" : "Hết pin"}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={styles.stationStats}>
+        <View style={styles.batteryInfo}>
+          <Text style={styles.batteryCount}>
+            🔋 {item.available}/{item.capacity}
+          </Text>
+          <Text style={styles.batteryTypes}>Pin A, B, C</Text>
+        </View>
+        <View style={styles.stationActions}>
+          <TouchableOpacity
+            style={styles.detailButton}
+            onPress={() =>
+              navigation
+                .getParent()
+                ?.navigate("StationDetails", { stationId: String(item.id) })
+            }
+          >
+            <Text style={styles.detailButtonText}>Chi tiết</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.reserveButton,
+              (credits <= 0 || item.available <= 0) &&
+                styles.reserveButtonDisabled,
+            ]}
+            disabled={credits <= 0 || item.available <= 0}
+            onPress={() =>
+              navigation
+                .getParent()
+                ?.navigate("ReservationConfirm", { stationId: String(item.id) })
+            }
+          >
+            <Text style={styles.reserveButtonText}>
+              {credits > 0 ? "Đặt trước" : "Hết lượt"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background.secondary },
-      ]}
-    >
-      {/* Header với Search và Map Button */}
-      <LinearGradient
-        colors={[theme.colors.primary, theme.colors.primaryLight]}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Text style={styles.headerTitle}>Trạm đổi pin 🔋</Text>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Trạm đổi pin</Text>
+      </View>
 
-        {/* Search Box */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm trạm..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={theme.colors.text.secondary}
-          />
-          <TouchableOpacity
-            style={styles.mapButton}
-            onPress={() => {
-              // @ts-ignore - We'll fix navigation types later
-              navigation.getParent()?.navigate("StationMap");
-            }}
-          >
-            <Text style={styles.mapButtonText}>🗺️</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      {/* Search Box */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm kiếm trạm..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#888888"
+        />
+        <TouchableOpacity
+          style={styles.mapButton}
+          onPress={() => {
+            navigation.getParent()?.navigate("StationMap");
+          }}
+        >
+          <Text style={styles.mapButtonText}>🗺️</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Filter bar: distance, battery type, sort */}
       {/* <ScrollView
@@ -219,20 +225,21 @@ export default function HomeScreen({ navigation }: Props) {
 
       {/* Content states */}
       {isLoading ? (
-        <LoadingSpinner text="Đang tải danh sách trạm..." />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang tải danh sách trạm...</Text>
+        </View>
       ) : isError ? (
-        <ThemedCard style={styles.emptyCard}>
-          <Text
-            style={[styles.emptyText, { color: theme.colors.text.secondary }]}
-          >
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>
             Không tải được danh sách. Kiểm tra mạng và thử lại.
           </Text>
-          <ThemedButton
-            title="Thử lại"
+          <TouchableOpacity
+            style={styles.retryButton}
             onPress={() => refetch()}
-            variant="primary"
-          />
-        </ThemedCard>
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={stations}
@@ -241,71 +248,59 @@ export default function HomeScreen({ navigation }: Props) {
           contentContainerStyle={styles.stationsList}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
-            <ThemedCard style={styles.emptyCard}>
-              <Text
-                style={[
-                  styles.emptyText,
-                  { color: theme.colors.text.secondary },
-                ]}
-              >
-                Không có trạm phù hợp
-              </Text>
-            </ThemedCard>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Không có trạm phù hợp</Text>
+            </View>
           )}
         />
       )}
 
       {/* FAB: open Map screen */}
       <TouchableOpacity
-        style={{
-          position: "absolute",
-          bottom: 24,
-          right: 20,
-          backgroundColor: theme.colors.primary,
-          borderRadius: 28,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-        }}
+        style={styles.fabButton}
         onPress={() => navigation.getParent()?.navigate("StationMap")}
         accessibilityRole="button"
         accessibilityLabel="Mở bản đồ"
       >
-        <Text style={{ color: "#fff", fontWeight: "700" }}>Bản đồ 🗺️</Text>
+        <Text style={styles.fabText}>Bản đồ 🗺️</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#1a1a1a",
   },
   header: {
-    paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingVertical: 16,
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 16,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#ffffff",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "#2a2a2a",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
+    color: "#ffffff",
   },
   mapButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "#5D7B6F",
     borderRadius: 12,
     padding: 12,
     alignItems: "center",
@@ -339,8 +334,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   stationsList: {
-    padding: 20,
-    paddingTop: 0,
+    padding: 16,
+    paddingBottom: 100,
+  },
+  stationCard: {
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
   stationHeader: {
     flexDirection: "row",
@@ -351,29 +352,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stationName: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
     marginBottom: 4,
   },
   stationAddress: {
     fontSize: 14,
+    color: "#888888",
     marginBottom: 2,
   },
   stationDistance: {
     fontSize: 12,
+    color: "#5D7B6F",
   },
   stationStatus: {
     alignItems: "flex-end",
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
   },
   statusText: {
     color: "white",
     fontSize: 10,
-    fontWeight: "bold",
+    fontWeight: "500",
   },
   stationStats: {
     flexDirection: "row",
@@ -384,19 +388,97 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   batteryCount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
+    color: "#ffffff",
     marginBottom: 2,
   },
   batteryTypes: {
     fontSize: 12,
+    color: "#888888",
+  },
+  stationActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  detailButton: {
+    backgroundColor: "#3a3a3a",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  detailButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  reserveButton: {
+    backgroundColor: "#5D7B6F",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  reserveButtonDisabled: {
+    backgroundColor: "#666666",
+  },
+  reserveButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#888888",
+    fontSize: 16,
   },
   emptyCard: {
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
     padding: 40,
     alignItems: "center",
+    margin: 16,
   },
   emptyText: {
     fontSize: 16,
+    color: "#888888",
     textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#5D7B6F",
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  fabButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    backgroundColor: "#5D7B6F",
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  fabText: {
+    color: "#ffffff",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

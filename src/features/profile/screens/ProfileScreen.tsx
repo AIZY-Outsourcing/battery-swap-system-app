@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Switch,
+  SafeAreaView,
 } from "react-native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import {
@@ -14,8 +16,6 @@ import {
 } from "../../../navigation/types";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useTheme } from "../../../theme/ThemeProvider";
-import { ThemedCard, ThemedButton } from "../../../components";
 import AuthService from "../../../services/auth/AuthService";
 
 type Props = CompositeScreenProps<
@@ -23,8 +23,50 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+interface MenuItemProps {
+  icon: string;
+  title: string;
+  onPress?: () => void;
+  hasToggle?: boolean;
+  toggleValue?: boolean;
+  onToggle?: (value: boolean) => void;
+  showArrow?: boolean;
+}
+
+const MenuItem: React.FC<MenuItemProps> = ({
+  icon,
+  title,
+  onPress,
+  hasToggle = false,
+  toggleValue = false,
+  onToggle,
+  showArrow = true,
+}) => (
+  <TouchableOpacity
+    style={styles.menuItem}
+    onPress={onPress}
+    disabled={hasToggle}
+  >
+    <View style={styles.menuItemLeft}>
+      <Text style={styles.menuIcon}>{icon}</Text>
+      <Text style={styles.menuTitle}>{title}</Text>
+    </View>
+    {hasToggle ? (
+      <Switch
+        value={toggleValue}
+        onValueChange={onToggle}
+        thumbColor={toggleValue ? "#007AFF" : "#f4f3f4"}
+        trackColor={{ false: "#767577", true: "#81b0ff" }}
+      />
+    ) : (
+      showArrow && <Text style={styles.arrow}>›</Text>
+    )}
+  </TouchableOpacity>
+);
+
 export default function ProfileScreen({ navigation }: Props) {
-  const theme = useTheme();
+  const [faceIDEnabled, setFaceIDEnabled] = useState(true);
+  const [language, setLanguage] = useState("vietnamese");
 
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
@@ -35,7 +77,6 @@ export default function ProfileScreen({ navigation }: Props) {
         onPress: async () => {
           try {
             await AuthService.clearAuth();
-            // Navigate back to auth stack
             (navigation as any).getParent()?.reset({
               index: 0,
               routes: [{ name: "AuthStack" }],
@@ -48,364 +89,279 @@ export default function ProfileScreen({ navigation }: Props) {
     ]);
   };
 
-  const menuSections = [
-    {
-      title: "Tài khoản",
-      items: [
-        {
-          icon: "👤",
-          title: "Thông tin cá nhân",
-          onPress: () =>
-            (navigation as any).getParent()?.navigate("EditProfile"),
-        },
-        {
-          icon: "🚗",
-          title: "Thông tin xe",
-          onPress: () =>
-            (navigation as any).getParent()?.navigate("VehicleProfile"),
-        },
-      ],
-    },
-    {
-      title: "Ví & Thanh toán",
-      items: [
-        {
-          icon: "💳",
-          title: "Phương thức thanh toán",
-          onPress: () =>
-            (navigation as any).getParent()?.navigate("PaymentMethods"),
-        },
-        {
-          icon: "📋",
-          title: "Gói đăng ký",
-          onPress: () =>
-            (navigation as any).getParent()?.navigate("Subscription"),
-        },
-        {
-          icon: "📄",
-          title: "Hóa đơn",
-          onPress: () =>
-            (navigation as any).getParent()?.navigate("PaymentHistory"),
-        },
-      ],
-    },
-    {
-      title: "Hỗ trợ & Cộng đồng",
-      items: [
-        {
-          icon: "💬",
-          title: "Hỗ trợ khách hàng",
-          onPress: () =>
-            Alert.alert(
-              "Thông báo",
-              "Tính năng hỗ trợ sẽ có trong phiên bản tiếp theo"
-            ),
-        },
-        {
-          icon: "⭐",
-          title: "Đánh giá đã gửi",
-          onPress: () =>
-            Alert.alert(
-              "Thông báo",
-              "Tính năng sẽ có trong phiên bản tiếp theo"
-            ),
-        },
-        {
-          icon: "📞",
-          title: "Hotline: 1900-1234",
-          onPress: () =>
-            Alert.alert(
-              "Liên hệ",
-              "Bạn có thể gọi hotline 1900-1234 để được hỗ trợ"
-            ),
-        },
-      ],
-    },
-    {
-      title: "Cài đặt & Bảo mật",
-      items: [
-        {
-          icon: "⚙️",
-          title: "Cài đặt ứng dụng",
-          onPress: () => (navigation as any).getParent()?.navigate("Settings"),
-        },
-        {
-          icon: "👆",
-          title: "Bảo mật (Face ID/Vân tay)",
-          onPress: () =>
-            Alert.alert(
-              "Bảo mật",
-              "Tính năng sinh trắc học sẽ có trong phiên bản tiếp theo"
-            ),
-        },
-        {
-          icon: "📋",
-          title: "Chính sách & Điều khoản",
-          onPress: () =>
-            Alert.alert(
-              "Thông báo",
-              "Trang chính sách sẽ được mở trong trình duyệt"
-            ),
-        },
-      ],
-    },
-  ];
-
   return (
-    <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background.secondary },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Profile Header */}
-      <ThemedCard style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
-          <View
-            style={[styles.avatar, { backgroundColor: theme.colors.primary }]}
-          >
-            <Text style={styles.avatarText}>JD</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Tài khoản</Text>
+        </View>
+
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>M</Text>
+              <View style={styles.onlineIndicator} />
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>mih</Text>
+              <Text style={styles.userPhone}>039-462-9319</Text>
+              <Text style={styles.userStatus}>Hoạt động từ: 24/09/2025</Text>
+            </View>
           </View>
         </View>
-        <View style={styles.profileInfo}>
-          <Text
-            style={[styles.profileName, { color: theme.colors.text.primary }]}
-          >
-            John Doe
-          </Text>
-          <Text
-            style={[
-              styles.profileEmail,
-              { color: theme.colors.text.secondary },
-            ]}
-          >
-            john.doe@email.com
-          </Text>
-          <Text
-            style={[styles.profilePhone, { color: theme.colors.text.tertiary }]}
-          >
-            +84 901 234 567
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() =>
-            (navigation as any).getParent()?.navigate("EditProfile")
-          }
-        >
-          <Text style={styles.editButtonText}>✏️</Text>
-        </TouchableOpacity>
-      </ThemedCard>
 
-      {/* Vehicle Info */}
-      <ThemedCard style={styles.vehicleCard}>
-        <View style={styles.vehicleHeader}>
-          <Text
-            style={[styles.sectionTitle, { color: theme.colors.text.primary }]}
-          >
-            🚗 Thông tin xe
-          </Text>
+        {/* Face ID Toggle */}
+        <View style={styles.menuContainer}>
+          <MenuItem
+            icon="�"
+            title="Đăng nhập bằng FaceID"
+            hasToggle={true}
+            toggleValue={faceIDEnabled}
+            onToggle={setFaceIDEnabled}
+          />
         </View>
-        <View style={styles.vehicleInfo}>
-          <Text
-            style={[
-              styles.vehicleDetail,
-              { color: theme.colors.text.secondary },
-            ]}
-          >
-            Tesla Model 3 2023
-          </Text>
-          <Text
-            style={[
-              styles.vehicleDetail,
-              { color: theme.colors.text.secondary },
-            ]}
-          >
-            Pin: LG Chem • Biển số: 30A-12345
-          </Text>
-          <Text style={[styles.vehicleStatus, { color: theme.colors.success }]}>
-            ✅ Đã xác thực
-          </Text>
-        </View>
-      </ThemedCard>
 
-      {/* Menu Sections */}
-      {menuSections.map((section, sectionIndex) => (
-        <View key={sectionIndex} style={styles.menuSection}>
-          <Text
-            style={[styles.sectionTitle, { color: theme.colors.text.primary }]}
-          >
-            {section.title}
-          </Text>
-          <ThemedCard style={styles.menuCard}>
-            {section.items.map((item, itemIndex) => (
-              <TouchableOpacity
-                key={itemIndex}
-                style={[
-                  styles.menuItem,
-                  itemIndex < section.items.length - 1 && {
-                    borderBottomWidth: 1,
-                    borderBottomColor: theme.colors.border.default,
-                  },
-                ]}
-                onPress={item.onPress}
-              >
-                <Text style={styles.menuIcon}>{item.icon}</Text>
-                <Text
-                  style={[
-                    styles.menuText,
-                    { color: theme.colors.text.primary },
-                  ]}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.menuArrow,
-                    { color: theme.colors.text.tertiary },
-                  ]}
-                >
-                  ›
-                </Text>
+        {/* Menu Items */}
+        <View style={styles.menuContainer}>
+          <MenuItem
+            icon="🎁"
+            title="Khuyến mại"
+            onPress={() =>
+              Alert.alert("Thông báo", "Tính năng đang phát triển")
+            }
+          />
+
+          <MenuItem
+            icon="📖"
+            title="Hướng dẫn sử dụng"
+            onPress={() =>
+              Alert.alert("Thông báo", "Tính năng đang phát triển")
+            }
+          />
+
+          <MenuItem
+            icon="❓"
+            title="Câu hỏi thường gặp"
+            onPress={() =>
+              Alert.alert("Thông báo", "Tính năng đang phát triển")
+            }
+          />
+
+          <MenuItem
+            icon="💬"
+            title="Trung tâm trợ giúp"
+            onPress={() =>
+              Alert.alert("Thông báo", "Tính năng đang phát triển")
+            }
+          />
+
+          <MenuItem
+            icon="🎧"
+            title="Yêu cầu hỗ trợ"
+            onPress={() =>
+              Alert.alert("Thông báo", "Tính năng đang phát triển")
+            }
+          />
+
+          <MenuItem
+            icon="📋"
+            title="Điều khoản sử dụng"
+            onPress={() =>
+              Alert.alert("Thông báo", "Tính năng đang phát triển")
+            }
+          />
+        </View>
+
+        {/* Language Section */}
+        <View style={styles.menuContainer}>
+          <View style={styles.languageSection}>
+            <View style={styles.menuItemLeft}>
+              <Text style={styles.menuIcon}>🌐</Text>
+              <Text style={styles.menuTitle}>Đổi ngôn ngữ</Text>
+            </View>
+            <View style={styles.languageOptions}>
+              <TouchableOpacity style={styles.languageOption}>
+                <Text style={styles.languageFlag}>🇻🇳</Text>
               </TouchableOpacity>
-            ))}
-          </ThemedCard>
+              <TouchableOpacity style={styles.languageOption}>
+                <Text style={styles.languageFlag}>🇬🇧</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      ))}
 
-      {/* Logout Button */}
-      <View style={styles.logoutContainer}>
-        <ThemedButton
-          title="🔓 Đăng xuất"
-          variant="secondary"
-          onPress={handleLogout}
-          fullWidth
-          style={{
-            backgroundColor: theme.colors.error,
-            borderColor: theme.colors.error,
-          }}
-        />
-      </View>
+        {/* Logout Button */}
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutIcon}>↗️</Text>
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* App Version */}
-      <View style={styles.versionContainer}>
-        <Text
-          style={[styles.versionText, { color: theme.colors.text.tertiary }]}
-        >
-          BSS App v1.0.0 🔋
-        </Text>
-      </View>
-    </ScrollView>
+        {/* App Version */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionText}>
+            Phiên bản: 2.30.6(2025.0818.1510)
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#1a1a1a",
   },
-  profileHeader: {
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  profileCard: {
+    backgroundColor: "#2a2a2a",
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  profileInfo: {
     flexDirection: "row",
     alignItems: "center",
-    margin: 20,
-    padding: 20,
-  },
-  avatarContainer: {
-    marginRight: 16,
   },
   avatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
+    backgroundColor: "#4a90e2",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 16,
+    position: "relative",
   },
   avatarText: {
-    color: "white",
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
+    color: "#ffffff",
   },
-  profileInfo: {
+  onlineIndicator: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#ff4444",
+  },
+  userInfo: {
     flex: 1,
   },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  profileEmail: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  profilePhone: {
-    fontSize: 12,
-  },
-  editButton: {
-    padding: 8,
-  },
-  editButtonText: {
-    fontSize: 18,
-  },
-  vehicleCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 16,
-  },
-  vehicleHeader: {
-    marginBottom: 12,
-  },
-  vehicleInfo: {
-    gap: 4,
-  },
-  vehicleDetail: {
-    fontSize: 14,
-  },
-  vehicleStatus: {
-    fontSize: 12,
-    fontWeight: "500",
-    marginTop: 4,
-  },
-  menuSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  userName: {
     fontSize: 18,
     fontWeight: "600",
-    marginBottom: 12,
+    color: "#ffffff",
+    marginBottom: 4,
   },
-  menuCard: {
-    padding: 0,
-    overflow: "hidden",
+  userPhone: {
+    fontSize: 16,
+    color: "#ffffff",
+    marginBottom: 2,
+  },
+  userStatus: {
+    fontSize: 14,
+    color: "#888888",
+  },
+  menuContainer: {
+    backgroundColor: "#2a2a2a",
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#3a3a3a",
+  },
+  menuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
   menuIcon: {
     fontSize: 20,
     marginRight: 16,
     width: 24,
-    textAlign: "center",
   },
-  menuText: {
-    flex: 1,
+  menuTitle: {
     fontSize: 16,
+    color: "#ffffff",
+    flex: 1,
   },
-  menuArrow: {
+  arrow: {
     fontSize: 18,
-    fontWeight: "300",
+    color: "#666666",
+  },
+  languageSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  languageOptions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  languageOption: {
+    padding: 4,
+  },
+  languageFlag: {
+    fontSize: 24,
   },
   logoutContainer: {
-    margin: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  logoutButton: {
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  logoutIcon: {
+    fontSize: 20,
+    marginRight: 16,
+    width: 24,
+  },
+  logoutText: {
+    fontSize: 16,
+    color: "#ff4444",
+    fontWeight: "500",
   },
   versionContainer: {
     alignItems: "center",
     paddingVertical: 20,
-    marginBottom: 20,
+    paddingBottom: 40,
   },
   versionText: {
     fontSize: 12,
+    color: "#666666",
   },
 });

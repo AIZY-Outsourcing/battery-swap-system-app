@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { MainTabParamList } from "../../../navigation/types";
@@ -130,161 +131,161 @@ export default function MyReservationsScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch đặt pin của tôi</Text>
+        <Text style={styles.headerTitle}>Đặt trước của tôi</Text>
       </View>
 
-      {activeReservations.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Đang chờ</Text>
-          <FlatList
-            data={activeReservations}
-            renderItem={renderReservationItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-          />
-        </>
-      )}
+      <View style={styles.content}>
+        {activeReservations.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Đang chờ</Text>
+            <FlatList
+              data={activeReservations}
+              renderItem={renderReservationItem}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
+        )}
 
-      {pastReservations.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Lịch sử</Text>
-          <FlatList
-            data={pastReservations}
-            renderItem={renderReservationItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-          />
-        </>
-      )}
+        {pastReservations.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Lịch sử</Text>
+            <FlatList
+              data={pastReservations}
+              renderItem={renderReservationItem}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
+        )}
 
-      {mockReservations.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Chưa có lịch đặt pin nào</Text>
-          <TouchableOpacity
-            style={styles.findStationButton}
-            onPress={() => navigation.navigate("Home")}
-          >
-            <Text style={styles.findStationButtonText}>Tìm trạm đổi pin</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+        {mockReservations.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Chưa có lịch đặt pin nào</Text>
+            <TouchableOpacity
+              style={styles.findStationButton}
+              onPress={() => navigation.navigate("Home")}
+            >
+              <Text style={styles.findStationButtonText}>Tìm trạm đổi pin</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#1a1a1a",
   },
   header: {
-    backgroundColor: "#007AFF",
-    paddingTop: 50,
-    paddingBottom: 15,
     paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "white",
-    textAlign: "center",
-  },
-  sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    margin: 15,
-    marginBottom: 10,
-    color: "#333",
+    color: "#ffffff",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+    marginTop: 16,
+    marginBottom: 12,
   },
   reservationCard: {
-    backgroundColor: "white",
-    marginHorizontal: 15,
-    marginVertical: 5,
+    backgroundColor: "#2a2a2a",
     borderRadius: 12,
-    padding: 15,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
   },
   activeCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: "#4CAF50",
+    borderLeftColor: "#5D7B6F",
   },
   pastCard: {
-    opacity: 0.8,
+    borderLeftColor: "#666666",
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   stationName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: "#ffffff",
     flex: 1,
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    color: "white",
+    fontSize: 10,
     fontWeight: "500",
+    color: "#ffffff",
   },
   cardBody: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   batteryType: {
     fontSize: 14,
-    color: "#666",
+    color: "#5D7B6F",
     marginBottom: 4,
+    fontWeight: "500",
   },
   reservedTime: {
     fontSize: 14,
-    color: "#666",
+    color: "#888888",
     marginBottom: 4,
   },
   expiredTime: {
     fontSize: 14,
-    color: "#FF9800",
+    color: "#f59e0b",
     fontWeight: "500",
   },
   cardActions: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    gap: 8,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: "#F44336",
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginRight: 5,
+    backgroundColor: "#ef4444",
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
   },
   cancelButtonText: {
-    color: "white",
-    textAlign: "center",
+    color: "#ffffff",
     fontWeight: "500",
+    fontSize: 14,
   },
   navigationButton: {
     flex: 1,
-    backgroundColor: "#007AFF",
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginLeft: 5,
+    backgroundColor: "#5D7B6F",
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
   },
   navigationButtonText: {
-    color: "white",
-    textAlign: "center",
+    color: "#ffffff",
     fontWeight: "500",
+    fontSize: 14,
   },
   emptyState: {
     flex: 1,
@@ -294,18 +295,18 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: "#999",
+    color: "#888888",
     marginBottom: 20,
     textAlign: "center",
   },
   findStationButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#5D7B6F",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
   },
   findStationButtonText: {
-    color: "white",
+    color: "#ffffff",
     fontSize: 16,
     fontWeight: "500",
   },

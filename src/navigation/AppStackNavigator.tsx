@@ -6,7 +6,6 @@ import { RootStackParamList } from "./types";
 import MainNavigator from "./MainNavigator";
 // Station screens
 import StationDetailScreen from "../features/station/screens/StationDetailScreen";
-import MapScreen from "../features/station/screens/MapScreen";
 // QR screens
 import QRScanScreen from "../features/qr/screens/QRScanScreen";
 // Swap screens
@@ -24,7 +23,7 @@ import PaymentScreen from "../features/payment/screens/PaymentScreen";
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
 import SettingsScreen from "../features/profile/screens/SettingsScreen";
 // Reservation screens
-import ReservationScreen from "../features/reservation/screens/ReservationScreen";
+import ReservationConfirmScreen from "../features/reservation/screens/ReservationConfirmScreen";
 // Invoice screens
 import InvoiceScreen from "../features/invoice/screens/InvoiceScreen";
 // Rating screens
@@ -69,11 +68,9 @@ export default function AppStackNavigator() {
       {/* Reservation Screens */}
       <Stack.Screen
         name="ReservationConfirm"
-        component={ReservationScreen}
+        component={ReservationConfirmScreen}
         options={{
-          headerShown: true,
-          title: "Xác nhận đặt chỗ",
-          headerBackTitle: "Trở về",
+          headerShown: false,
         }}
       />
 

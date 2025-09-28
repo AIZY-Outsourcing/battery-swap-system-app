@@ -7,6 +7,7 @@ import MyReservationsScreen from "../features/reservation/screens/MyReservations
 import QRScanScreen from "../features/qr/screens/QRScanScreen";
 import HistoryScreen from "../features/history/screens/HistoryScreen";
 import ProfileScreen from "../features/profile/screens/ProfileScreen";
+import CustomTabBar from "./CustomTabBar";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -16,22 +17,9 @@ export default function MainNavigator() {
       initialRouteName="Home"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#5D7B6F",
-        tabBarInactiveTintColor: "#8E8E93",
-        tabBarStyle: {
-          backgroundColor: "#2a2a2a",
-          borderTopWidth: 1,
-          borderTopColor: "#3a3a3a",
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 88,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "500",
-          marginTop: 4,
-        },
+        // Colors & sizes are managed by the custom tab bar
       }}
+      tabBar={(props) => <CustomTabBar {...props} />}
     >
       {/* 1. Home (Stations) - Entry point, bên trái */}
       <Tab.Screen

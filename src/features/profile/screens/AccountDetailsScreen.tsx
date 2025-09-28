@@ -9,10 +9,15 @@ import {
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../../navigation/types";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuthStore } from "../../../store/authStore";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = NativeStackScreenProps<AppStackParamList, "AccountDetails">;
 
 export default function AccountDetailsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+  const storeCredits = useAuthStore((s) => s.user?.swapCredits);
   // Mock data for demo
   const accountData = {
     singleSwaps: {
@@ -70,55 +75,98 @@ export default function AccountDetailsScreen({ navigation }: Props) {
     },
   };
 
-  const renderSectionHeader = (title: string, count?: string) => (
+  // Remaining single swap credits: prefer store value, fallback to mock count (5)
+  const credits = storeCredits ?? accountData.singleSwaps.count;
+
+  const renderSectionHeader = (
+    title: string,
+    count?: string,
+    iconName?: React.ComponentProps<typeof MaterialCommunityIcons>["name"]
+  ) => (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionHeaderLeft}>
+        {iconName ? (
+          <MaterialCommunityIcons name={iconName} size={18} color="#5D7B6F" />
+        ) : null}
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {count && <Text style={styles.sectionCount}>{count}</Text>}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chi tiết tài khoản</Text>
-        <View style={styles.placeholder} />
-      </View>
+      {/* Header removed: using native header from stack */}
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Summary card */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <View style={styles.summaryIconWrap}>
+                <MaterialCommunityIcons
+                  name="battery"
+                  size={16}
+                  color="#ffffff"
+                />
+              </View>
+              <Text style={styles.summaryLabel}>Đổi lẻ</Text>
+              <Text style={styles.summaryValue}>
+                {accountData.singleSwaps.count} lượt
+              </Text>
+            </View>
+            <View style={styles.dividerVertical} />
+            <View style={styles.summaryItem}>
+              <View style={styles.summaryIconWrap}>
+                <MaterialCommunityIcons
+                  name="package-variant-closed"
+                  size={16}
+                  color="#ffffff"
+                />
+              </View>
+              <Text style={styles.summaryLabel}>Đổi gói</Text>
+              <Text style={styles.summaryValue}>
+                {accountData.packageSwaps.history[0]?.swapsLeft ?? 0} lượt
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Lượt đổi lẻ */}
         <View style={styles.section}>
           {renderSectionHeader(
             "Lượt đổi lẻ",
-            `${accountData.singleSwaps.count} lượt`
+            `${accountData.singleSwaps.count} lượt`,
+            "battery"
           )}
-          {accountData.singleSwaps.history.map((swap) => (
-            <View key={swap.id} style={styles.transactionItem}>
-              <View style={styles.transactionHeader}>
-                <Text style={styles.transactionTitle}>{swap.stationName}</Text>
-                <Text style={styles.transactionAmount}>{swap.cost}</Text>
-              </View>
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionDate}>{swap.date}</Text>
-                <Text style={styles.batteryInfo}>
-                  {swap.batteryFrom} → {swap.batteryTo}
-                </Text>
-              </View>
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryBoxLabel}>Lượt còn lại</Text>
+              <Text style={styles.summaryBoxValue}>{credits} lượt</Text>
             </View>
-          ))}
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryBoxLabel}>Đã dùng (tháng)</Text>
+              <Text style={styles.summaryBoxValue}>
+                {accountData.singleSwaps.count}
+              </Text>
+            </View>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryBoxLabel}>Lần gần nhất</Text>
+              <Text style={styles.summaryBoxValue}>
+                {accountData.singleSwaps.history[0]?.date.split(" ")[0] ?? "—"}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Lượt đổi gói */}
         <View style={styles.section}>
           {renderSectionHeader(
             "Lượt đổi gói",
-            accountData.packageSwaps.reserved
+            `${accountData.packageSwaps.history[0]?.swapsLeft ?? 0}/${
+              accountData.packageSwaps.history[0]?.totalSwaps ?? 0
+            } lượt`,
+            "package-variant-closed"
           )}
           {accountData.packageSwaps.history.map((package_) => (
             <View key={package_.id} style={styles.packageItem}>
@@ -133,161 +181,155 @@ export default function AccountDetailsScreen({ navigation }: Props) {
                 <Text style={styles.packageExpiry}>
                   Hết hạn: {package_.validUntil}
                 </Text>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${
+                          (package_.swapsLeft / package_.totalSwaps) * 100
+                        }%`,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
             </View>
           ))}
         </View>
 
-        {/* Túi thần tài */}
-        <View style={styles.section}>
-          {renderSectionHeader("Túi thần tài", accountData.wallet.balance)}
-          {accountData.wallet.recentTransactions.map((transaction) => (
-            <View key={transaction.id} style={styles.transactionItem}>
-              <View style={styles.transactionHeader}>
-                <Text style={styles.transactionTitle}>{transaction.type}</Text>
-                <Text
-                  style={[
-                    styles.transactionAmount,
-                    transaction.amount.startsWith("+")
-                      ? styles.positiveAmount
-                      : styles.negativeAmount,
-                  ]}
-                >
-                  {transaction.amount}
-                </Text>
-              </View>
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
-                {transaction.method && (
-                  <Text style={styles.transactionMethod}>
-                    {transaction.method}
-                  </Text>
-                )}
-                {transaction.station && (
-                  <Text style={styles.transactionMethod}>
-                    {transaction.station}
-                  </Text>
-                )}
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Bottom spacing */}
-        <View style={styles.bottomSpacing} />
+        {/* Bottom spacing to avoid footer overlap (accounts for safe area) */}
+        <View style={[styles.bottomSpacing, { height: 110 + insets.bottom }]} />
       </ScrollView>
+
+      {/* Sticky footer actions */}
+      <View style={[styles.footerActions, { bottom: insets.bottom }]}>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionPrimary]}
+            onPress={() => navigation.navigate("BuySwap")}
+          >
+            <MaterialCommunityIcons
+              name="cart-outline"
+              size={18}
+              color="#ffffff"
+            />
+            <Text style={styles.actionButtonText}>Mua lượt</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionSecondary]}
+            onPress={() => navigation.navigate("BuyPackage")}
+          >
+            <MaterialCommunityIcons
+              name="package-variant-closed"
+              size={18}
+              color="#5D7B6F"
+            />
+            <Text style={styles.actionButtonTextSecondary}>Mua gói</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#b0d4b8",
+  container: { flex: 1, backgroundColor: "#ffffff" },
+  // pageGradient removed
+  // header styles removed
+  content: { flex: 1, padding: 16 },
+  summaryCard: {
+    backgroundColor: "#5d7b6f",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  header: {
+  summaryRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  summaryItem: { flex: 1, alignItems: "center", gap: 6 },
+  summaryIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#5D7B6F",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 20,
-    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#ffffff50",
   },
-  backButtonText: {
-    fontSize: 24,
-    color: "#000000",
-    fontWeight: "300",
+  dividerVertical: {
+    width: 1,
+    height: 40,
+    backgroundColor: "#ffffff55",
+    marginHorizontal: 8,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  section: {
-    marginBottom: 32,
-  },
+  summaryLabel: { fontSize: 12, color: "#ffffff", opacity: 0.9 },
+  summaryValue: { fontSize: 14, fontWeight: "700", color: "#ffffff" },
+  section: { marginBottom: 32 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 16,
     paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: "#5D7B6F",
+    borderBottomWidth: 0,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
-  },
-  sectionCount: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#5D7B6F",
-  },
-  transactionItem: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
+  sectionHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: "600", color: "#000000" },
+  sectionCount: { fontSize: 16, fontWeight: "600", color: "#5D7B6F" },
+  summaryGrid: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 12,
     marginBottom: 12,
   },
-  transactionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  transactionTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#000000",
+  summaryBox: {
     flex: 1,
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000000",
-  },
-  positiveAmount: {
-    color: "#4CAF50",
-  },
-  negativeAmount: {
-    color: "#F44336",
-  },
-  transactionDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#eaeaea",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  transactionDate: {
-    fontSize: 14,
-    color: "#888888",
+  summaryBoxLabel: { fontSize: 12, color: "#666666", marginBottom: 4 },
+  summaryBoxValue: { fontSize: 16, fontWeight: "700", color: "#000000" },
+  actionsRow: { flexDirection: "row", gap: 12 },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
   },
-  batteryInfo: {
-    fontSize: 14,
+  actionPrimary: { backgroundColor: "#5D7B6F" },
+  actionSecondary: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#5D7B6F",
+  },
+  actionButtonText: { color: "#ffffff", fontWeight: "600", fontSize: 14 },
+  actionButtonTextSecondary: {
     color: "#5D7B6F",
-    fontWeight: "500",
-  },
-  transactionMethod: {
+    fontWeight: "600",
     fontSize: 14,
-    color: "#888888",
-    fontStyle: "italic",
   },
   packageItem: {
     backgroundColor: "#ffffff",
@@ -296,6 +338,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: "#5D7B6F",
+    borderWidth: 1,
+    borderColor: "#eaeaea",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
   packageHeader: {
     flexDirection: "row",
@@ -303,11 +352,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  packageName: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#000000",
-  },
+  packageName: { fontSize: 16, fontWeight: "500", color: "#000000" },
   packageStatus: {
     fontSize: 12,
     color: "#4CAF50",
@@ -316,19 +361,32 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  packageDetails: {
-    gap: 4,
+  packageDetails: { gap: 8 },
+  packageInfo: { fontSize: 14, color: "#5D7B6F", fontWeight: "500" },
+  packageExpiry: { fontSize: 14, color: "#888888" },
+  progressTrack: {
+    height: 6,
+    backgroundColor: "#eaeaea",
+    borderRadius: 4,
+    overflow: "hidden",
   },
-  packageInfo: {
-    fontSize: 14,
-    color: "#5D7B6F",
-    fontWeight: "500",
-  },
-  packageExpiry: {
-    fontSize: 14,
-    color: "#888888",
-  },
-  bottomSpacing: {
-    height: 20,
+  progressFill: { height: 6, backgroundColor: "#5D7B6F", borderRadius: 4 },
+  bottomSpacing: { height: 110 },
+  footerActions: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderTopColor: "#eaeaea",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });

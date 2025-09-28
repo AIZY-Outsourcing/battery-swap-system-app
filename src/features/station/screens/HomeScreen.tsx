@@ -16,8 +16,10 @@ import {
 } from "../../../navigation/types";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useStations } from "../hooks/useStations";
 import { useAuthStore } from "../../../store/authStore";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 type DistanceOpt = 5 | 10 | 20;
 type BatteryOpt = "A" | "B" | "C" | "";
@@ -52,9 +54,16 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.stationInfo}>
           <Text style={styles.stationName}>{item.name}</Text>
           <Text style={styles.stationAddress}>{item.address}</Text>
-          <Text style={styles.stationDistance}>
-            📍 {item.distance ? `${item.distance.toFixed(1)} km` : "N/A"}
-          </Text>
+          <View style={styles.stationDistanceRow}>
+            <MaterialCommunityIcons
+              name="map-marker"
+              size={14}
+              color="#5D7B6F"
+            />
+            <Text style={styles.stationDistance}>
+              {item.distance ? `${item.distance.toFixed(1)} km` : "N/A"}
+            </Text>
+          </View>
         </View>
         <View style={styles.stationStatus}>
           <View
@@ -73,9 +82,12 @@ export default function HomeScreen({ navigation }: Props) {
       </View>
       <View style={styles.stationStats}>
         <View style={styles.batteryInfo}>
-          <Text style={styles.batteryCount}>
-            🔋 {item.available}/{item.capacity}
-          </Text>
+          <View style={styles.batteryRow}>
+            <MaterialCommunityIcons name="battery" size={14} color="#000000" />
+            <Text style={styles.batteryCount}>
+              {item.available}/{item.capacity}
+            </Text>
+          </View>
           <Text style={styles.batteryTypes}>Pin A, B, C</Text>
         </View>
         <View style={styles.stationActions}>
@@ -113,6 +125,15 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Page background: 20% green top, 80% white bottom */}
+      <LinearGradient
+        colors={["#b0d4b8", "#b0d4b8", "#ffffff", "#ffffff"]}
+        locations={[0, 0.2, 0.2, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.pageGradient}
+        pointerEvents="none"
+      />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Trạm đổi pin</Text>
@@ -147,14 +168,14 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={styles.transactionTypesContainer}>
             <View style={styles.walletItem}>
               <Text style={styles.walletLabel}>Lượt Đổi Lẻ</Text>
-              <Text style={styles.walletAmount}>10 lượt</Text>
+              <Text style={styles.walletAmount}>5 lượt</Text>
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.walletItem}>
               <Text style={styles.walletLabel}>Lượt Đổi Gói</Text>
-              <Text style={styles.walletAmount}>100 lượt</Text>
+              <Text style={styles.walletAmount}>20/30 lượt</Text>
             </View>
           </View>
 
@@ -300,7 +321,14 @@ export default function HomeScreen({ navigation }: Props) {
         accessibilityRole="button"
         accessibilityLabel="Mở bản đồ"
       >
-        <Text style={styles.fabText}>Bản đồ 🗺️</Text>
+        <View style={styles.fabContent}>
+          <MaterialCommunityIcons
+            name="map-outline"
+            size={18}
+            color="#ffffff"
+          />
+          <Text style={styles.fabText}>Bản đồ</Text>
+        </View>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -310,6 +338,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#b0d4b8",
+    position: "relative",
+  },
+  pageGradient: {
+    ...StyleSheet.absoluteFillObject,
   },
   header: {
     paddingHorizontal: 20,
@@ -367,6 +399,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
+
   creditsHeaderSection: {
     marginBottom: 16,
   },
@@ -399,14 +432,14 @@ const styles = StyleSheet.create({
   },
   walletLabel: {
     fontSize: 12,
-    color: "#000000",
+    color: "#ffffff",
     fontWeight: "500",
     textAlign: "center",
     marginBottom: 4,
   },
   walletAmount: {
     fontSize: 14,
-    color: "#000000",
+    color: "#ffffff",
     fontWeight: "600",
     textAlign: "center",
   },
@@ -422,7 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#e0e0e0",
   },
   financialCenterButton: {
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -447,7 +480,7 @@ const styles = StyleSheet.create({
   },
   financialCenterText: {
     fontSize: 13,
-    color: "#000000",
+    color: "#5D7B6F",
     fontWeight: "600",
     flex: 1,
   },
@@ -488,6 +521,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    // Add subtle separation from white page background
+    borderWidth: 1,
+    borderColor: "#eaeaea",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
   stationHeader: {
     flexDirection: "row",
@@ -512,6 +553,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#5D7B6F",
   },
+  stationDistanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   stationStatus: {
     alignItems: "flex-end",
   },
@@ -532,6 +578,11 @@ const styles = StyleSheet.create({
   },
   batteryInfo: {
     flex: 1,
+  },
+  batteryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   batteryCount: {
     fontSize: 14,
@@ -587,6 +638,14 @@ const styles = StyleSheet.create({
     padding: 40,
     alignItems: "center",
     margin: 16,
+    // Match station card separation styling
+    borderWidth: 1,
+    borderColor: "#eaeaea",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
   emptyText: {
     fontSize: 16,
@@ -621,6 +680,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  fabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   fabText: {
     color: "#ffffff",

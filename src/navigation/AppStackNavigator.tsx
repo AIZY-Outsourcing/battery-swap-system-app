@@ -19,6 +19,8 @@ import { PaymentMethodsScreen } from "../features/payment/screens/PaymentMethods
 import { TopUpScreen } from "../features/payment/screens/TopUpScreen";
 import { PaymentHistoryScreen } from "../features/payment/screens/PaymentHistoryScreen";
 import PaymentScreen from "../features/payment/screens/PaymentScreen";
+import BuySwapScreen from "../features/payment/screens/BuySwapScreen";
+import BuyPackageScreen from "../features/payment/screens/BuyPackageScreen";
 // Profile screens
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
 import SettingsScreen from "../features/profile/screens/SettingsScreen";
@@ -157,6 +159,26 @@ export default function AppStackNavigator() {
         }}
       />
 
+      {/* Purchase Screens */}
+      <Stack.Screen
+        name="BuySwap"
+        component={BuySwapScreen}
+        options={{
+          headerShown: true,
+          title: "Mua lượt đổi",
+          headerBackTitle: "Trở về",
+        }}
+      />
+      <Stack.Screen
+        name="BuyPackage"
+        component={BuyPackageScreen}
+        options={{
+          headerShown: true,
+          title: "Mua gói",
+          headerBackTitle: "Trở về",
+        }}
+      />
+
       {/* Invoice Screen */}
       <Stack.Screen
         name="InvoiceScreen"
@@ -198,7 +220,9 @@ export default function AppStackNavigator() {
         name="AccountDetails"
         component={AccountDetailsScreen}
         options={{
-          headerShown: false,
+          headerShown: true,
+          title: "Quản lý lượt đổi",
+          headerBackTitle: "Trở về",
         }}
       />
     </Stack.Navigator>

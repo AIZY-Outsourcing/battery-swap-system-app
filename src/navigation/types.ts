@@ -23,6 +23,8 @@ export type RootStackParamList = {
     type: "swap" | "subscription" | "topup";
     subscriptionId?: string;
   };
+  BuySwap: { preset?: number } | undefined;
+  BuyPackage: undefined;
   // Profile screens
   EditProfile: undefined;
   Settings: undefined;

@@ -274,7 +274,10 @@ export default function HistoryScreen() {
       </View>
       <View style={styles.tabsRow}>
         <TouchableOpacity
-          style={[styles.tabBtn, tab === "swap" && styles.tabActive]}
+          style={[
+            styles.tabBtn,
+            tab === "swap" ? styles.tabActive : styles.tabInactive,
+          ]}
           onPress={() => setTab("swap")}
         >
           <Text
@@ -284,7 +287,10 @@ export default function HistoryScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabBtn, tab === "payment" && styles.tabActive]}
+          style={[
+            styles.tabBtn,
+            tab === "payment" ? styles.tabActive : styles.tabInactive,
+          ]}
           onPress={() => setTab("payment")}
         >
           <Text
@@ -294,7 +300,10 @@ export default function HistoryScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabBtn, tab === "subscription" && styles.tabActive]}
+          style={[
+            styles.tabBtn,
+            tab === "subscription" ? styles.tabActive : styles.tabInactive,
+          ]}
           onPress={() => setTab("subscription")}
         >
           <Text
@@ -330,7 +339,7 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f1f5f9",
     paddingHorizontal: styleTokens.spacing.lg,
   },
   header: {
@@ -345,23 +354,38 @@ const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
-    borderRadius: styleTokens.radius,
+    borderRadius: styleTokens.radius + 4,
     padding: 4,
     marginBottom: styleTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: "#d8e1e8",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: styleTokens.radius - 4,
+    paddingVertical: 12,
+    borderRadius: styleTokens.radius,
     alignItems: "center",
   },
   tabActive: {
     backgroundColor: "#5D7B6F",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabInactive: {
+    backgroundColor: "#ffffff",
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#64748b",
+    color: "#475569",
   },
   tabTextActive: {
     color: "#ffffff",

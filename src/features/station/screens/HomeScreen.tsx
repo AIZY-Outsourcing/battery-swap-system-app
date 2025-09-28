@@ -16,10 +16,10 @@ import {
 } from "../../../navigation/types";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { ScrollView } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useStations } from "../hooks/useStations";
 import { useAuthStore } from "../../../store/authStore";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 type DistanceOpt = 5 | 10 | 20;
 type BatteryOpt = "A" | "B" | "C" | "";
@@ -125,9 +125,9 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Page background: 20% green top, 80% white bottom */}
+      {/* Green top gradient blending into soft gray */}
       <LinearGradient
-        colors={["#b0d4b8", "#b0d4b8", "#ffffff", "#ffffff"]}
+        colors={["#b0d4b8", "#b0d4b8", "#f1f5f9", "#f1f5f9"]}
         locations={[0, 0.2, 0.2, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -337,7 +337,7 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#b0d4b8",
+    backgroundColor: "#f1f5f9",
     position: "relative",
   },
   pageGradient: {

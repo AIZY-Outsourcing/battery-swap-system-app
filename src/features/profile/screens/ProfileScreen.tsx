@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,56 +17,73 @@ import {
 import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import AuthService from "../../../services/auth/AuthService";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { mockUser, mockSubscriptions } from "../../../data/mockData";
+import { styleTokens } from "../../../styles/tokens";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, "Profile">,
   NativeStackScreenProps<RootStackParamList>
 >;
 
-interface MenuItemProps {
-  icon: string;
-  title: string;
+interface MenuItemDef {
+  key: string;
+  icon: string; // material community icon name
+  label: string;
   onPress?: () => void;
-  hasToggle?: boolean;
+  toggle?: boolean;
   toggleValue?: boolean;
-  onToggle?: (value: boolean) => void;
-  showArrow?: boolean;
+  onToggle?: (v: boolean) => void;
+  danger?: boolean;
+  badge?: string;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({
-  icon,
-  title,
-  onPress,
-  hasToggle = false,
-  toggleValue = false,
-  onToggle,
-  showArrow = true,
-}) => (
-  <TouchableOpacity
-    style={styles.menuItem}
-    onPress={onPress}
-    disabled={hasToggle}
-  >
-    <View style={styles.menuItemLeft}>
-      <Text style={styles.menuIcon}>{icon}</Text>
-      <Text style={styles.menuTitle}>{title}</Text>
-    </View>
-    {hasToggle ? (
-      <Switch
-        value={toggleValue}
-        onValueChange={onToggle}
-        thumbColor={toggleValue ? "#007AFF" : "#f4f3f4"}
-        trackColor={{ false: "#767577", true: "#81b0ff" }}
-      />
-    ) : (
-      showArrow && <Text style={styles.arrow}>›</Text>
-    )}
-  </TouchableOpacity>
-);
+const MenuItem = ({ item }: { item: MenuItemDef }) => {
+  return (
+    <TouchableOpacity
+      style={styles.menuItem}
+      activeOpacity={0.7}
+      onPress={item.toggle ? undefined : item.onPress}
+      disabled={!!item.toggle}
+    >
+      <View style={styles.menuLeft}>
+        <MaterialCommunityIcons
+          name={item.icon as any}
+          size={20}
+          color={item.danger ? "#dc2626" : "#334155"}
+          style={styles.menuIcon}
+        />
+        <Text style={[styles.menuLabel, item.danger && styles.dangerText]}>
+          {item.label}
+        </Text>
+        {item.badge && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{item.badge}</Text>
+          </View>
+        )}
+      </View>
+      {item.toggle ? (
+        <Switch
+          value={item.toggleValue}
+          onValueChange={item.onToggle}
+          thumbColor={item.toggleValue ? styleTokens.colors.success : "#f4f4f5"}
+          trackColor={{ false: "#cbd5e1", true: "#86efac" }}
+        />
+      ) : (
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={22}
+          color="#94a3b8"
+        />
+      )}
+    </TouchableOpacity>
+  );
+};
 
 export default function ProfileScreen({ navigation }: Props) {
   const [faceIDEnabled, setFaceIDEnabled] = useState(true);
-  const [language, setLanguage] = useState("vietnamese");
+  const activeSubscription = mockSubscriptions[0];
+  const [language, setLanguage] = useState<"vi" | "en">("vi");
 
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
@@ -89,124 +106,221 @@ export default function ProfileScreen({ navigation }: Props) {
     ]);
   };
 
+  const accountMenu: MenuItemDef[] = [
+    {
+      key: "promo",
+      icon: "gift-outline",
+      label: "Khuyến mại",
+      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
+    },
+    {
+      key: "guide",
+      icon: "book-open-page-variant",
+      label: "Hướng dẫn sử dụng",
+      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
+    },
+    {
+      key: "faq",
+      icon: "help-circle-outline",
+      label: "Câu hỏi thường gặp",
+      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
+    },
+  ];
+  const supportMenu: MenuItemDef[] = [
+    {
+      key: "helpcenter",
+      icon: "headset",
+      label: "Trung tâm trợ giúp",
+      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
+    },
+    {
+      key: "support",
+      icon: "message-question-outline",
+      label: "Yêu cầu hỗ trợ",
+      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
+    },
+  ];
+  const legalMenu: MenuItemDef[] = [
+    {
+      key: "terms",
+      icon: "file-document-outline",
+      label: "Điều khoản sử dụng",
+      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
+    },
+  ];
+
+  const faceIdMenu: MenuItemDef[] = [
+    {
+      key: "faceid",
+      icon: "face-recognition",
+      label: "Đăng nhập bằng FaceID",
+      toggle: true,
+      toggleValue: faceIDEnabled,
+      onToggle: setFaceIDEnabled,
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
-        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Tài khoản</Text>
         </View>
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <View style={styles.profileInfo}>
+          <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>M</Text>
+              <Text style={styles.avatarText}>{mockUser.name.charAt(0)}</Text>
               <View style={styles.onlineIndicator} />
             </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>mih</Text>
-              <Text style={styles.userPhone}>039-462-9319</Text>
-              <Text style={styles.userStatus}>Hoạt động từ: 24/09/2025</Text>
+            <View style={styles.userCol}>
+              <Text style={styles.name}>{mockUser.name}</Text>
+              <Text style={styles.meta}>{mockUser.phone}</Text>
+              <Text style={styles.metaSmall}>
+                Loại pin: {mockUser.batteryType}
+              </Text>
+              {activeSubscription && (
+                <View style={styles.subscriptionBadge}>
+                  <MaterialCommunityIcons
+                    name="infinity"
+                    size={14}
+                    color="#ffffff"
+                  />
+                  <Text style={styles.subscriptionText}>
+                    {activeSubscription.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <View style={styles.quickStatsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{mockSubscriptions.length}</Text>
+              <Text style={styles.statLabel}>Gói</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>--</Text>
+              <Text style={styles.statLabel}>Đổi/tháng</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>--</Text>
+              <Text style={styles.statLabel}>Điểm</Text>
             </View>
           </View>
         </View>
 
-        {/* Face ID Toggle */}
-        <View style={styles.menuContainer}>
-          <MenuItem
-            icon="�"
-            title="Đăng nhập bằng FaceID"
-            hasToggle={true}
-            toggleValue={faceIDEnabled}
-            onToggle={setFaceIDEnabled}
-          />
+        {/* Face ID */}
+        <View style={styles.sectionCard}>
+          {faceIdMenu.map((m) => (
+            <MenuItem key={m.key} item={m} />
+          ))}
         </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          <MenuItem
-            icon="🎁"
-            title="Khuyến mại"
-            onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
-            }
-          />
-
-          <MenuItem
-            icon="📖"
-            title="Hướng dẫn sử dụng"
-            onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
-            }
-          />
-
-          <MenuItem
-            icon="❓"
-            title="Câu hỏi thường gặp"
-            onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
-            }
-          />
-
-          <MenuItem
-            icon="💬"
-            title="Trung tâm trợ giúp"
-            onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
-            }
-          />
-
-          <MenuItem
-            icon="🎧"
-            title="Yêu cầu hỗ trợ"
-            onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
-            }
-          />
-
-          <MenuItem
-            icon="📋"
-            title="Điều khoản sử dụng"
-            onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
-            }
-          />
+        {/* Account */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Tài khoản</Text>
+          </View>
+          {accountMenu.map((m) => (
+            <MenuItem key={m.key} item={m} />
+          ))}
         </View>
 
-        {/* Language Section */}
-        <View style={styles.menuContainer}>
-          <View style={styles.languageSection}>
-            <View style={styles.menuItemLeft}>
-              <Text style={styles.menuIcon}>🌐</Text>
-              <Text style={styles.menuTitle}>Đổi ngôn ngữ</Text>
+        {/* Support */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Hỗ trợ</Text>
+          </View>
+          {supportMenu.map((m) => (
+            <MenuItem key={m.key} item={m} />
+          ))}
+        </View>
+
+        {/* Legal */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pháp lý</Text>
+          </View>
+          {legalMenu.map((m) => (
+            <MenuItem key={m.key} item={m} />
+          ))}
+        </View>
+
+        {/* Language Switch */}
+        <View style={styles.sectionCard}>
+          <View style={styles.languageRow}>
+            <View style={styles.languageLeft}>
+              <MaterialCommunityIcons
+                name="earth"
+                size={20}
+                color="#334155"
+                style={{ marginRight: 12 }}
+              />
+              <Text style={styles.menuLabel}>Ngôn ngữ</Text>
             </View>
-            <View style={styles.languageOptions}>
-              <TouchableOpacity style={styles.languageOption}>
-                <Text style={styles.languageFlag}>🇻🇳</Text>
+            <View style={styles.languageSwitch}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setLanguage("vi")}
+                style={[
+                  styles.languageOption,
+                  language === "vi" && styles.languageOptionActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageOptionText,
+                    language === "vi" && styles.languageOptionTextActive,
+                  ]}
+                >
+                  VI
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.languageOption}>
-                <Text style={styles.languageFlag}>🇬🇧</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setLanguage("en")}
+                style={[
+                  styles.languageOption,
+                  language === "en" && styles.languageOptionActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageOptionText,
+                    language === "en" && styles.languageOptionTextActive,
+                  ]}
+                >
+                  EN
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Logout Button */}
-        <View style={styles.logoutContainer}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutIcon}>↗️</Text>
-            <Text style={styles.logoutText}>Đăng xuất</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Logout */}
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={handleLogout}
+          activeOpacity={0.75}
+        >
+          <MaterialCommunityIcons
+            name="logout"
+            size={20}
+            color="#dc2626"
+            style={{ marginRight: 10 }}
+          />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
+        </TouchableOpacity>
 
-        {/* App Version */}
-        <View style={styles.versionContainer}>
+        <View style={styles.versionBox}>
           <Text style={styles.versionText}>
-            Phiên bản: 2.30.6(2025.0818.1510)
+            Phiên bản 2.30.6 (2025.0818.1510)
           </Text>
         </View>
       </ScrollView>
@@ -215,153 +329,188 @@ export default function ProfileScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#b0d4b8",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
-  },
+  container: { flex: 1, backgroundColor: "#f1f5f9" },
+  scrollContent: { paddingBottom: 40 },
+  header: { alignItems: "center", paddingVertical: 16 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
   profileCard: {
     backgroundColor: "#ffffff",
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
-  profileInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  profileRow: { flexDirection: "row", marginBottom: 12 },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: "#5D7B6F",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,
     position: "relative",
   },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
+  avatarText: { fontSize: 28, fontWeight: "700", color: "#ffffff" },
   onlineIndicator: {
     position: "absolute",
-    top: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#ff4444",
+    bottom: 4,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#22c55e",
+    borderWidth: 2,
+    borderColor: "#ffffff",
   },
-  userInfo: {
-    flex: 1,
+  userCol: { flex: 1 },
+  name: { fontSize: 18, fontWeight: "600", color: "#111827", marginBottom: 4 },
+  meta: { fontSize: 14, color: "#475569", marginBottom: 2 },
+  metaSmall: { fontSize: 12, color: "#64748b", marginBottom: 6 },
+  subscriptionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#5D7B6F",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    gap: 4,
   },
-  userName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#ffffff",
-    marginBottom: 4,
+  subscriptionText: { fontSize: 12, fontWeight: "600", color: "#ffffff" },
+  quickStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
   },
-  userPhone: {
+  statBox: { flex: 1, alignItems: "center" },
+  statValue: {
     fontSize: 16,
-    color: "#ffffff",
+    fontWeight: "700",
+    color: "#111827",
     marginBottom: 2,
   },
-  userStatus: {
-    fontSize: 14,
-    color: "#888888",
-  },
-  menuContainer: {
+  statLabel: { fontSize: 11, color: "#64748b" },
+  statDivider: { width: 1, backgroundColor: "#e2e8f0", marginVertical: 4 },
+  sectionCard: {
     backgroundColor: "#ffffff",
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    overflow: "hidden",
+  },
+  sectionHeader: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#e0e0e0",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
   },
-  menuItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
+  menuLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  menuIcon: { marginRight: 14 },
+  menuLabel: { fontSize: 15, color: "#0f172a", flexShrink: 1 },
+  dangerText: { color: "#dc2626" },
+  badge: {
+    marginLeft: 8,
+    backgroundColor: "#5D7B6F",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
   },
-  menuIcon: {
-    fontSize: 20,
-    marginRight: 16,
-    width: 24,
+  badgeText: {
+    fontSize: 10,
+    color: "#ffffff",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
-  menuTitle: {
-    fontSize: 16,
-    color: "#000000",
-    flex: 1,
-  },
-  arrow: {
-    fontSize: 18,
-    color: "#666666",
-  },
-  languageSection: {
+  languageRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  languageOptions: {
+  languageLeft: { flexDirection: "row", alignItems: "center" },
+  languageChoices: { flexDirection: "row", gap: 8 },
+  languageSwitch: {
     flexDirection: "row",
-    gap: 12,
+    backgroundColor: "#f1f5f9",
+    padding: 4,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   languageOption: {
-    padding: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: "transparent",
+    minWidth: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  languageFlag: {
-    fontSize: 24,
+  languageOptionActive: {
+    backgroundColor: "#5D7B6F",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
   },
-  logoutContainer: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+  languageOptionText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+    letterSpacing: 0.5,
   },
-  logoutButton: {
-    backgroundColor: "#2a2a2a",
-    borderRadius: 12,
+  languageOptionTextActive: {
+    color: "#ffffff",
+  },
+  langPill: {
+    backgroundColor: "#5D7B6F",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  langText: { color: "#ffffff", fontSize: 12, fontWeight: "600" },
+  langPillInactive: { backgroundColor: "#e2e8f0" },
+  langTextInactive: { color: "#64748b" },
+  logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    justifyContent: "center",
+    marginHorizontal: 16,
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    marginTop: 8,
   },
-  logoutIcon: {
-    fontSize: 20,
-    marginRight: 16,
-    width: 24,
-  },
-  logoutText: {
-    fontSize: 16,
-    color: "#ff4444",
-    fontWeight: "500",
-  },
-  versionContainer: {
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingBottom: 40,
-  },
-  versionText: {
-    fontSize: 12,
-    color: "#666666",
-  },
+  logoutText: { fontSize: 15, fontWeight: "600", color: "#dc2626" },
+  versionBox: { alignItems: "center", marginTop: 24, marginBottom: 32 },
+  versionText: { fontSize: 12, color: "#94a3b8" },
 });

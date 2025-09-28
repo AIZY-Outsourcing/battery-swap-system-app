@@ -13,6 +13,7 @@ import { MainTabParamList } from "../../../navigation/types";
 import { mockReservations } from "../../../data/mockData";
 import type { Reservation } from "../../../data/mockData";
 import Button from "../../../components/ui/Button";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { styleTokens } from "../../../styles/tokens";
 
 type Props = NativeStackScreenProps<MainTabParamList, "MyReservations">;
@@ -75,6 +76,28 @@ export default function MyReservationsScreen({ navigation }: Props) {
       const cfg = statusConfig[item.derivedStatus] || statusConfig[item.status];
       const showCountdown = item.derivedStatus === "active";
 
+      // Visual emphasis variants for countdown
+      const getCountdownVisual = (mins: number) => {
+        if (mins <= 5)
+          return {
+            box: styles.countdownUrgent,
+            accent: "#dc2626",
+            icon: "#dc2626",
+          };
+        if (mins <= 15)
+          return {
+            box: styles.countdownWarn,
+            accent: "#d97706",
+            icon: "#d97706",
+          };
+        return {
+          box: styles.countdownSafe,
+          accent: "#047857",
+          icon: "#059669",
+        };
+      };
+      const countdownVisual = getCountdownVisual(item.remainingMinutes);
+
       return (
         <View style={styles.cardWrapper}>
           <View style={[styles.reservationCard]}>
@@ -104,10 +127,24 @@ export default function MyReservationsScreen({ navigation }: Props) {
               </Text>
             </View>
             {showCountdown && (
-              <View style={[styles.countdownBox]}>
-                <Text style={styles.countdownLabel}>Còn lại</Text>
-                <Text style={styles.countdownValue}>
-                  {item.remainingMinutes} phút
+              <View style={[styles.countdownBox, countdownVisual.box]}>
+                <View style={styles.countdownLeft}>
+                  <MaterialCommunityIcons
+                    name="clock-outline"
+                    size={16}
+                    color={countdownVisual.icon}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.countdownLabel]}>Còn lại</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.countdownValue,
+                    { color: countdownVisual.accent },
+                  ]}
+                >
+                  {item.remainingMinutes}
+                  <Text style={styles.countdownValueUnit}> phút</Text>
                 </Text>
               </View>
             )}
@@ -152,7 +189,10 @@ export default function MyReservationsScreen({ navigation }: Props) {
       <View style={styles.tabsRow}>
         <TouchableOpacity
           onPress={() => setTab("active")}
-          style={[styles.tabBtn, tab === "active" && styles.tabActive]}
+          style={[
+            styles.tabBtn,
+            tab === "active" ? styles.tabActive : styles.tabInactive,
+          ]}
           activeOpacity={0.7}
         >
           <Text
@@ -163,7 +203,10 @@ export default function MyReservationsScreen({ navigation }: Props) {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTab("history")}
-          style={[styles.tabBtn, tab === "history" && styles.tabActive]}
+          style={[
+            styles.tabBtn,
+            tab === "history" ? styles.tabActive : styles.tabInactive,
+          ]}
           activeOpacity={0.7}
         >
           <Text
@@ -205,7 +248,7 @@ export default function MyReservationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f1f5f9",
     paddingHorizontal: styleTokens.spacing.lg,
   },
   header: {
@@ -220,23 +263,38 @@ const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
-    borderRadius: styleTokens.radius,
+    borderRadius: styleTokens.radius + 4,
     padding: 4,
     marginBottom: styleTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: "#d8e1e8",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: styleTokens.radius - 4,
+    paddingVertical: 12,
+    borderRadius: styleTokens.radius,
     alignItems: "center",
   },
   tabActive: {
     backgroundColor: "#5D7B6F",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabInactive: {
+    backgroundColor: "#ffffff",
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#64748b",
+    color: "#475569",
   },
   tabTextActive: {
     color: styleTokens.colors.white,
@@ -309,6 +367,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  countdownLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  countdownSafe: {
+    backgroundColor: "#ecfdf5",
+    borderWidth: 1,
+    borderColor: "#a7f3d0",
+  },
+  countdownWarn: {
+    backgroundColor: "#fffbeb",
+    borderWidth: 1,
+    borderColor: "#fde68a",
+  },
+  countdownUrgent: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+  },
   countdownLabel: {
     fontSize: 13,
     color: "#64748b",
@@ -317,6 +394,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: styleTokens.colors.primary,
+  },
+  countdownValueUnit: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#64748b",
   },
   actionsRow: {
     flexDirection: "row",

@@ -22,6 +22,7 @@ import PaymentScreen from "../features/payment/screens/PaymentScreen";
 // Profile screens
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
 import SettingsScreen from "../features/profile/screens/SettingsScreen";
+import AccountDetailsScreen from "../features/profile/screens/AccountDetailsScreen";
 // Reservation screens
 import ReservationConfirmScreen from "../features/reservation/screens/ReservationConfirmScreen";
 // Invoice screens
@@ -191,6 +192,13 @@ export default function AppStackNavigator() {
           headerShown: true,
           title: "Cài đặt",
           headerBackTitle: "Trở về",
+        }}
+      />
+      <Stack.Screen
+        name="AccountDetails"
+        component={AccountDetailsScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

@@ -268,7 +268,7 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#b0d4b8",
   },
   header: {
     paddingHorizontal: 20,
@@ -278,11 +278,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     margin: 16,
     borderRadius: 12,
     padding: 4,
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   historyItem: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -333,13 +333,13 @@ const styles = StyleSheet.create({
   stationName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 4,
   },
   paymentDescription: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 4,
   },
   dateTime: {

@@ -119,7 +119,7 @@ export default function HomeScreen({ navigation }: Props) {
       </View>
 
       {/* Search Box */}
-      <View style={styles.searchContainer}>
+      {/* <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
           placeholder="Tìm kiếm trạm..."
@@ -135,6 +135,44 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <Text style={styles.mapButtonText}>🗺️</Text>
         </TouchableOpacity>
+      </View> */}
+
+      {/* Account Info */}
+      <View style={styles.creditsContainer}>
+        <View style={styles.creditsCard}>
+          {/* <View style={styles.creditsHeaderSection}>
+              <Text style={styles.creditsMainTitle}>Tình hình tài khoản</Text>
+            </View> */}
+
+          <View style={styles.transactionTypesContainer}>
+            <View style={styles.walletItem}>
+              <Text style={styles.walletLabel}>Lượt Đổi Lẻ</Text>
+              <Text style={styles.walletAmount}>10 lượt</Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.walletItem}>
+              <Text style={styles.walletLabel}>Lượt Đổi Gói</Text>
+              <Text style={styles.walletAmount}>100 lượt</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.financialCenterButton}
+            onPress={() => {
+              navigation.getParent()?.navigate("AccountDetails");
+            }}
+          >
+            <View style={styles.financialCenterContent}>
+              {/* <View style={styles.financialIconContainer}>
+                <Text style={styles.financialIcon}>💳</Text>
+              </View> */}
+              <Text style={styles.financialCenterText}>Quản Lý Lượt Đổi</Text>
+              <Text style={styles.financialArrow}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filter bar: distance, battery type, sort */}
@@ -271,7 +309,7 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#b0d4b8",
   },
   header: {
     paddingHorizontal: 20,
@@ -281,7 +319,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
   },
   searchContainer: {
     flexDirection: "row",
@@ -292,12 +330,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: "#ffffff",
+    color: "#000000",
   },
   mapButton: {
     backgroundColor: "#5D7B6F",
@@ -308,6 +346,114 @@ const styles = StyleSheet.create({
   },
   mapButtonText: {
     fontSize: 20,
+  },
+  // Credits/Account section
+  creditsContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  creditsCard: {
+    backgroundColor: "#5d7b6f",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  creditsHeaderSection: {
+    marginBottom: 16,
+  },
+  creditsMainTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#000000",
+    textAlign: "center",
+  },
+  transactionTypesContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 8,
+  },
+  walletItem: {
+    flex: 1,
+    // backgroundColor: "#f8f8f8",
+    // borderRadius: 12,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    minHeight: 44,
+    maxHeight: 44,
+  },
+  highlightWallet: {
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#5D7B6F",
+  },
+  walletLabel: {
+    fontSize: 12,
+    color: "#000000",
+    fontWeight: "500",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  walletAmount: {
+    fontSize: 14,
+    color: "#000000",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  walletAmountHighlight: {
+    fontSize: 10,
+    color: "#FF6B9D",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  divider: {
+    width: 1,
+    height: "80%",
+    backgroundColor: "#e0e0e0",
+  },
+  financialCenterButton: {
+    backgroundColor: "#f8f8f8",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  financialCenterContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  financialIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "#5D7B6F",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  financialIcon: {
+    fontSize: 16,
+    color: "#ffffff",
+  },
+  financialCenterText: {
+    fontSize: 13,
+    color: "#000000",
+    fontWeight: "600",
+    flex: 1,
+  },
+  financialArrow: {
+    fontSize: 16,
+    color: "#5D7B6F",
   },
   filterContainer: {
     backgroundColor: "transparent",
@@ -338,7 +484,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   stationCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -354,12 +500,12 @@ const styles = StyleSheet.create({
   stationName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 4,
   },
   stationAddress: {
     fontSize: 14,
-    color: "#888888",
+    color: "#666666",
     marginBottom: 2,
   },
   stationDistance: {
@@ -390,25 +536,25 @@ const styles = StyleSheet.create({
   batteryCount: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 2,
   },
   batteryTypes: {
     fontSize: 12,
-    color: "#888888",
+    color: "#666666",
   },
   stationActions: {
     flexDirection: "row",
     gap: 8,
   },
   detailButton: {
-    backgroundColor: "#3a3a3a",
+    backgroundColor: "#f0f0f0",
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   detailButtonText: {
-    color: "#ffffff",
+    color: "#000000",
     fontSize: 12,
     fontWeight: "500",
   },
@@ -419,7 +565,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   reserveButtonDisabled: {
-    backgroundColor: "#666666",
+    backgroundColor: "#cccccc",
   },
   reserveButtonText: {
     color: "#ffffff",
@@ -432,11 +578,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    color: "#888888",
+    color: "#666666",
     fontSize: 16,
   },
   emptyCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 40,
     alignItems: "center",
@@ -444,7 +590,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "#888888",
+    color: "#666666",
     textAlign: "center",
     marginBottom: 16,
   },

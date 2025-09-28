@@ -26,6 +26,7 @@ export type RootStackParamList = {
   // Profile screens
   EditProfile: undefined;
   Settings: undefined;
+  AccountDetails: undefined;
   // Other screens
   ReservationConfirm: { stationId: string; estimatedArrival?: Date };
   KioskSession: { reservationId?: string; stationId: string };
@@ -36,6 +37,8 @@ export type RootStackParamList = {
   Subscription: undefined;
   SubscriptionDetail: { subscriptionId: string };
 };
+
+export type AppStackParamList = RootStackParamList;
 
 export type AuthStackParamList = {
   Welcome: undefined;

@@ -181,7 +181,7 @@ export default function MyReservationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#b0d4b8",
   },
   header: {
     paddingHorizontal: 20,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
   },
   content: {
     flex: 1,
@@ -200,12 +200,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginTop: 16,
     marginBottom: 12,
   },
   reservationCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   stationName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     flex: 1,
   },
   statusBadge: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: "500",
-    color: "#ffffff",
+    color: "#000000",
   },
   cardBody: {
     marginBottom: 12,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButtonText: {
-    color: "#ffffff",
+    color: "#000000",
     fontWeight: "500",
     fontSize: 14,
   },
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   navigationButtonText: {
-    color: "#ffffff",
+    color: "#000000",
     fontWeight: "500",
     fontSize: 14,
   },
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   findStationButtonText: {
-    color: "#ffffff",
+    color: "#000000",
     fontSize: 16,
     fontWeight: "500",
   },

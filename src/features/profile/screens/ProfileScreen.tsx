@@ -217,7 +217,7 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#b0d4b8",
   },
   scrollView: {
     flex: 1,
@@ -230,10 +230,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
   },
   profileCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     marginHorizontal: 16,
     borderRadius: 12,
     padding: 16,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#4a90e2",
+    backgroundColor: "#5D7B6F",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     color: "#888888",
   },
   menuContainer: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     marginHorizontal: 16,
     borderRadius: 12,
     marginBottom: 16,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#3a3a3a",
+    borderBottomColor: "#e0e0e0",
   },
   menuItemLeft: {
     flexDirection: "row",
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: 16,
-    color: "#ffffff",
+    color: "#000000",
     flex: 1,
   },
   arrow: {

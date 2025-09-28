@@ -248,13 +248,13 @@ export default function ReservationConfirmScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#b0d4b8",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
@@ -263,12 +263,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 24,
-    color: "#ffffff",
+    color: "#000000",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
   },
   headerSpacer: {
     width: 40,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   stationCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   stationName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     flex: 1,
   },
   statusBadge: {
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: "500",
-    color: "#ffffff",
+    color: "#000000",
   },
   stationAddress: {
     fontSize: 14,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     color: "#5D7B6F",
   },
   creditsCard: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -344,11 +344,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 12,
   },
   batteryOption: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   batteryType: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 4,
   },
   batteryCapacity: {
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#5D7B6F",
   },
   termsSection: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   termsTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
     marginBottom: 8,
   },
   termsText: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   bottomActions: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderTopWidth: 1,
@@ -454,6 +454,6 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000000",
   },
 });

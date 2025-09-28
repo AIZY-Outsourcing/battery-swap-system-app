@@ -247,7 +247,7 @@ export default function HomeScreen({ navigation }: Props) {
             ]}
             onPress={() => setBatteryType(b)}
           >
-            <Text style={styles.filterIcon}>🔋</Text>
+            <MaterialCommunityIcons name="battery-charging-medium" size={16} color="#fff" style={styles.filterIcon as any} />
             <Text
               style={[
                 styles.filterLabel,

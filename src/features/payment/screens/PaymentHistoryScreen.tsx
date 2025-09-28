@@ -8,6 +8,7 @@ import {
   FlatList,
   RefreshControl,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 
 interface PaymentRecord {
@@ -140,7 +141,13 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
       case "topup":
         return "💰";
       case "swap":
-        return "🔋";
+        return (
+          <MaterialCommunityIcons
+            name="battery-charging-medium"
+            size={16}
+            color="#fff"
+          />
+        );
       case "subscription":
         return "⭐";
       case "refund":

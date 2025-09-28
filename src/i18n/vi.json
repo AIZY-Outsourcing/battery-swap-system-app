@@ -135,5 +135,21 @@
   "profile.edit": "Chỉnh sửa hồ sơ",
   "settings.title": "Cài đặt",
   "credits.manage": "Quản lý lượt đổi",
-  "common.back": "Trở về"
+  "common.back": "Trở về",
+  "map.scooterMode.title": "Chế độ xe máy",
+  "map.scooterMode.message": "Hiển thị chỉ các trạm sạc có pin sẵn sàng",
+  "map.toggle.list": "Xem danh sách",
+  "map.toggle.map": "Xem bản đồ",
+  "map.selectedStation": "Trạm được chọn",
+  "map.allStations": "Tất cả trạm",
+  "station.type.public": "Trạm công cộng - Gửi xe miễn phí",
+  "station.type.dealer": "Đại lý - Gửi xe tính phí",
+  "station.type.service": "Xưởng dịch vụ - Sửa chữa",
+  "station.type.other": "Khác",
+  "station.status.available": "Còn sạc sẵn sàng: {{available}}/{{capacity}}",
+  "station.status.maintenance": "Bảo trì",
+  "station.status.empty": "Hết pin",
+  "station.open": "Mở",
+  "station.directions": "Chỉ đường",
+  "station.googleMap": "Google Map"
 }

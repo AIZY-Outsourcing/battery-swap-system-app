@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -23,13 +23,17 @@ import BottomSheetHandle from "../../../components/BottomSheetHandle";
 
 // Data & Utils
 import { stations } from "../../../data/stations";
+import { useTranslation } from "react-i18next";
 import { Station, FilterType, MapViewMode } from "../../../types/station";
 import { distanceKm, formatDistance } from "../../../utils/geo";
 import { styleTokens } from "../../../styles/tokens";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
 export default function StationMapScreen() {
+  const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
 
@@ -43,9 +47,10 @@ export default function StationMapScreen() {
   } | null>(null);
   const [filteredStations, setFilteredStations] = useState<Station[]>(stations);
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
+  const [sheetIndex, setSheetIndex] = useState(0); // track current bottom sheet index
 
   // Bottom sheet snap points
-  const snapPoints = ["15%", "45%", "85%"];
+  const snapPoints = ["15%", "45%", "85%", "100%"]; // added full height
 
   useEffect(() => {
     requestLocationPermission();
@@ -137,9 +142,8 @@ export default function StationMapScreen() {
   };
 
   const handleScooterMode = () => {
-    // Filter to show only stations with available batteries
     setSelectedFilter("station");
-    Alert.alert("Chế độ xe máy", "Hiển thị chỉ các trạm sạc có pin sẵn sàng");
+    Alert.alert(t("map.scooterMode.title"), t("map.scooterMode.message"));
   };
 
   const handleMyLocation = () => {
@@ -165,7 +169,8 @@ export default function StationMapScreen() {
   };
 
   const handleSheetChanges = (index: number) => {
-    setIsBottomSheetExpanded(index === 2);
+    setSheetIndex(index);
+    setIsBottomSheetExpanded(index >= 2); // expanded for 85% or 100%
   };
 
   const getMarkerColor = (station: Station): string => {
@@ -185,7 +190,10 @@ export default function StationMapScreen() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={styleTokens.colors.bg}
+      />
 
       {/* Map */}
       <MapView
@@ -226,13 +234,17 @@ export default function StationMapScreen() {
                 },
               ]}
             >
-              <Text style={styles.markerText}>
-                {station.type === "station"
-                  ? "🔋"
-                  : station.type === "dealer"
-                  ? "🏪"
-                  : "🔧"}
-              </Text>
+              <MaterialCommunityIcons
+                name={
+                  station.type === "station"
+                    ? "battery-charging-medium"
+                    : station.type === "dealer"
+                    ? "store-outline"
+                    : "wrench-outline"
+                }
+                size={20}
+                color={styleTokens.colors.white}
+              />
               {station.available > 0 && (
                 <View style={styles.markerBadge}>
                   <Text style={styles.markerBadgeText}>
@@ -245,30 +257,39 @@ export default function StationMapScreen() {
         ))}
       </MapView>
 
-      {/* Filter Chips */}
-      <FilterChips
-        selectedFilter={selectedFilter}
-        onFilterChange={setSelectedFilter}
-      />
-
-      {/* Floating Actions */}
-      <FloatingActions
-        onLayerToggle={handleLayerToggle}
-        onScooterMode={handleScooterMode}
-        onMyLocation={handleMyLocation}
-        mapMode={mapMode}
-      />
+      {/* Floating Actions (hide at 85% and 100% -> indices >=2) */}
+      {sheetIndex < 2 && (
+        <FloatingActions
+          onLayerToggle={handleLayerToggle}
+          // onScooterMode={handleScooterMode}
+          onMyLocation={handleMyLocation}
+          mapMode={mapMode}
+        />
+      )}
 
       {/* List Toggle FAB */}
-      <TouchableOpacity
-        style={styles.listToggleFab}
+      {/* <TouchableOpacity
+        style={[
+          styles.listToggleFab,
+          {
+            top: insets.top + 12,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+          },
+        ]}
         onPress={handleListToggle}
         activeOpacity={0.8}
       >
+        <MaterialCommunityIcons
+          name={isBottomSheetExpanded ? "map" : "format-list-bulleted"}
+          size={18}
+          color={styleTokens.colors.white}
+        />
         <Text style={styles.listToggleText}>
-          {isBottomSheetExpanded ? "Xem bản đồ" : "Xem danh sách"}
+          {isBottomSheetExpanded ? t("map.toggle.map") : t("map.toggle.list")}
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Bottom Sheet */}
       <BottomSheet
@@ -287,7 +308,9 @@ export default function StationMapScreen() {
           {/* Selected Station Highlight */}
           {selectedStation && (
             <View style={styles.selectedStationContainer}>
-              <Text style={styles.selectedStationTitle}>Trạm được chọn</Text>
+              <Text style={styles.selectedStationTitle}>
+                {t("map.selectedStation")}
+              </Text>
               <StationCard
                 station={selectedStation}
                 isSelected={true}
@@ -299,7 +322,7 @@ export default function StationMapScreen() {
           {/* Station List */}
           <View style={styles.stationList}>
             <Text style={styles.listTitle}>
-              Tất cả trạm ({filteredStations.length})
+              {t("map.allStations")} ({filteredStations.length})
             </Text>
             {filteredStations.map((station) => (
               <StationCard
@@ -319,7 +342,7 @@ export default function StationMapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: styleTokens.colors.neutral, // lighter gray background requested
   },
   map: {
     flex: 1,
@@ -355,25 +378,34 @@ const styles = StyleSheet.create({
   },
   listToggleFab: {
     position: "absolute",
-    bottom: 120,
     right: styleTokens.padding,
-    backgroundColor: styleTokens.colors.bg,
-    paddingHorizontal: styleTokens.padding,
-    paddingVertical: styleTokens.spacing.md,
-    borderRadius: 25,
-    ...styleTokens.shadow,
+    backgroundColor: styleTokens.colors.card,
+    paddingHorizontal: styleTokens.spacing.lg,
+    paddingVertical: styleTokens.spacing.sm + 2,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: styleTokens.colors.surface,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
     zIndex: 1000,
   },
   listToggleText: {
     color: styleTokens.colors.white,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
+    letterSpacing: 0.5,
   },
   bottomSheetBackground: {
-    backgroundColor: styleTokens.colors.bg,
+    backgroundColor: "#f1f5f9", // light gray similar to profile tab background
+    borderTopLeftRadius: styleTokens.radius,
+    borderTopRightRadius: styleTokens.radius,
   },
   bottomSheetContent: {
     paddingBottom: 100,
+    backgroundColor: "#f1f5f9",
   },
   selectedStationContainer: {
     marginBottom: styleTokens.spacing.lg,
@@ -382,14 +414,21 @@ const styles = StyleSheet.create({
     ...styleTokens.typography.headline,
     paddingHorizontal: styleTokens.padding,
     marginBottom: styleTokens.spacing.sm,
+    color: styleTokens.colors.textDark,
   },
   stationList: {
     flex: 1,
+    paddingTop: styleTokens.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
   },
   listTitle: {
-    ...styleTokens.typography.headline,
+    ...styleTokens.typography.subtitle,
     paddingHorizontal: styleTokens.padding,
     marginBottom: styleTokens.spacing.sm,
-    color: styleTokens.colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: styleTokens.colors.textMuted,
+    fontWeight: "500",
   },
 });

@@ -4,10 +4,14 @@ export const styleTokens = {
     card: "#0f2b3a", // card background
     muted: "#9fb3bd", // muted text
     primary: "#1e90ff", // accent blue for CTAs
+    primaryAccent: "#5D7B6F", // unified green accent (matches bottom tab)
     success: "#28c76f", // green availability
     danger: "#ff4d4f", // maintenance
     white: "#ffffff",
     surface: "#132a3a", // slightly lighter than card
+    neutral: "#1b3545", // mid gray surface (new)
+    textDark: "#1b3545", // dark text for light surfaces
+    textMuted: "#5b7380", // muted text for light surfaces
   },
   radius: 14,
   padding: 16,

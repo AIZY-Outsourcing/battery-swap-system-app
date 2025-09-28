@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { FilterType } from "../types/station";
 import { styleTokens } from "../styles/tokens";
 
@@ -15,10 +16,18 @@ interface FilterChipsProps {
 }
 
 const FILTERS = [
-  { id: "all" as FilterType, label: "Tất cả", icon: "📍" },
-  { id: "station" as FilterType, label: "Trạm sạc", icon: "🔋" },
-  { id: "dealer" as FilterType, label: "Đại lý", icon: "🏪" },
-  { id: "service" as FilterType, label: "Xưởng dịch vụ", icon: "🔧" },
+  { id: "all" as FilterType, label: "Tất cả", icon: "map-marker" },
+  {
+    id: "station" as FilterType,
+    label: "Trạm sạc",
+    icon: "battery-charging-medium",
+  },
+  { id: "dealer" as FilterType, label: "Đại lý", icon: "store-outline" },
+  {
+    id: "service" as FilterType,
+    label: "Xưởng dịch vụ",
+    icon: "wrench-outline",
+  },
 ];
 
 export default function FilterChips({
@@ -32,26 +41,29 @@ export default function FilterChips({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {FILTERS.map((filter) => (
-          <TouchableOpacity
-            key={filter.id}
-            style={[
-              styles.chip,
-              selectedFilter === filter.id && styles.chipActive,
-            ]}
-            onPress={() => onFilterChange(filter.id)}
-          >
-            <Text style={styles.icon}>{filter.icon}</Text>
-            <Text
-              style={[
-                styles.label,
-                selectedFilter === filter.id && styles.labelActive,
-              ]}
+        {FILTERS.map((f) => {
+          const active = f.id === selectedFilter;
+          return (
+            <TouchableOpacity
+              key={f.id}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => onFilterChange(f.id)}
             >
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <MaterialCommunityIcons
+                  name={f.icon as any}
+                  size={14}
+                  color={active ? "#fff" : "#ccc"}
+                />
+                <Text style={[styles.label, active && styles.labelActive]}>
+                  {f.label}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );

@@ -1,18 +1,19 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MapViewMode } from "../types/station";
 import { styleTokens } from "../styles/tokens";
 
 interface FloatingActionsProps {
   onLayerToggle: () => void;
-  onScooterMode: () => void;
+  // onScooterMode: () => void;
   onMyLocation: () => void;
   mapMode: MapViewMode;
 }
 
 export default function FloatingActions({
   onLayerToggle,
-  onScooterMode,
+  // onScooterMode,
   onMyLocation,
   mapMode,
 }: FloatingActionsProps) {
@@ -22,24 +23,40 @@ export default function FloatingActions({
         style={[styles.button, mapMode !== "standard" && styles.buttonActive]}
         onPress={onLayerToggle}
         accessibilityLabel="Toggle map layers"
+        activeOpacity={0.85}
       >
-        <Text style={styles.icon}>🗺️</Text>
+        <MaterialCommunityIcons
+          name={
+            mapMode === "standard" ? "layers-triple-outline" : "layers-triple"
+          }
+          size={22}
+          color={
+            mapMode !== "standard"
+              ? styleTokens.colors.white
+              : styleTokens.colors.muted
+          }
+        />
       </TouchableOpacity>
 
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.button}
         onPress={onScooterMode}
         accessibilityLabel="Scooter view"
       >
         <Text style={styles.icon}>🛵</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <TouchableOpacity
         style={styles.button}
         onPress={onMyLocation}
         accessibilityLabel="My location"
+        activeOpacity={0.85}
       >
-        <Text style={styles.icon}>📍</Text>
+        <MaterialCommunityIcons
+          name="crosshairs-gps"
+          size={22}
+          color={styleTokens.colors.muted}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -49,7 +66,7 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     right: styleTokens.padding,
-    top: "30%",
+    top: "8%", // moved up for closer placement
     zIndex: 1000,
   },
   button: {

@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ScrollView,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../navigation/types";
 import { useAuthStore } from "../../../store/authStore";
@@ -148,9 +149,20 @@ export default function ReservationConfirmScreen({ navigation, route }: Props) {
             </View>
           </View>
           <Text style={styles.stationAddress}>{mockStation.address}</Text>
-          <Text style={styles.stationDistance}>
-            📍 {mockStation.distance} km • 🔋 {mockStation.available} pin có sẵn
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={styles.stationDistance}>
+              📍 {mockStation.distance} km •{" "}
+            </Text>
+            <MaterialCommunityIcons
+              name="battery-charging-medium"
+              size={14}
+              color="#4ade80"
+            />
+            <Text style={styles.stationDistance}>
+              {" "}
+              {mockStation.available} pin có sẵn
+            </Text>
+          </View>
         </View>
 
         {/* Credits Info */}

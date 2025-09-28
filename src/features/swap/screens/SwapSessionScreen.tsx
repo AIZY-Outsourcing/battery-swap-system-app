@@ -8,6 +8,7 @@ import {
   Animated,
   Alert,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from "../../../theme";
 
@@ -132,7 +133,11 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
       {/* Current Step */}
       <View style={styles.stepContainer}>
         <View style={styles.stepIconContainer}>
-          <Text style={styles.stepIcon}>🔋</Text>
+          <MaterialCommunityIcons
+            name="battery-charging-medium"
+            size={64}
+            color={theme.colors.primary}
+          />
         </View>
 
         <Text style={styles.stepTitle}>{currentStepData.title}</Text>

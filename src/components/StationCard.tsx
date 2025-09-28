@@ -6,8 +6,10 @@ import {
   StyleSheet,
   Linking,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Station } from "../types/station";
 import { styleTokens } from "../styles/tokens";
+import { useTranslation } from "react-i18next";
 import { formatDistance } from "../utils/geo";
 
 interface StationCardProps {
@@ -23,6 +25,7 @@ export default function StationCard({
   onPress,
   onDirections,
 }: StationCardProps) {
+  const { t } = useTranslation();
   const getStatusColor = () => {
     if (station.available > 0) return styleTokens.colors.success;
     if (station.maintenance > 0) return styleTokens.colors.danger;
@@ -31,24 +34,27 @@ export default function StationCard({
 
   const getStatusText = () => {
     if (station.available > 0) {
-      return `Còn sạc sẵn sàng: ${station.available}/${station.capacity}`;
+      return t("station.status.available", {
+        available: station.available,
+        capacity: station.capacity,
+      });
     }
     if (station.maintenance > 0) {
-      return "Bảo trì";
+      return t("station.status.maintenance");
     }
-    return "Hết pin";
+    return t("station.status.empty");
   };
 
   const getTypeText = () => {
     switch (station.type) {
       case "station":
-        return "Trạm công cộng - Gửi xe miễn phí";
+        return t("station.type.public");
       case "dealer":
-        return "Đại lý - Gửi xe tính phí";
+        return t("station.type.dealer");
       case "service":
-        return "Xưởng dịch vụ - Sửa chữa";
+        return t("station.type.service");
       default:
-        return "Khác";
+        return t("station.type.other");
     }
   };
 
@@ -95,34 +101,76 @@ export default function StationCard({
       <Text style={styles.address}>{station.address}</Text>
 
       <View style={styles.info}>
-        <Text style={styles.typeText}>
-          {station.type === "station"
-            ? "🔋"
-            : station.type === "dealer"
-            ? "🏪"
-            : "🔧"}{" "}
-          {getTypeText()}
-        </Text>
-        <Text style={styles.hours}>Mở: {station.openHours}</Text>
+        <View
+          style={{
+            flexDirection: "row",
+            flex: 1,
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <MaterialCommunityIcons
+            name={
+              station.type === "station"
+                ? "battery-charging-medium"
+                : station.type === "dealer"
+                ? "store-outline"
+                : "wrench-outline"
+            }
+            size={16}
+            color={styleTokens.colors.textDark}
+          />
+          <Text style={styles.typeText}>{getTypeText()}</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <MaterialCommunityIcons
+            name="clock-outline"
+            size={14}
+            color={styleTokens.colors.success}
+          />
+          <Text style={styles.hours}>
+            {t("station.open")}: {station.openHours}
+          </Text>
+        </View>
       </View>
 
-      <Text style={[styles.status, { color: getStatusColor() }]}>
-        🔋 {getStatusText()}
-      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          marginBottom: styleTokens.spacing.lg,
+        }}
+      >
+        <MaterialCommunityIcons
+          name="battery"
+          size={16}
+          color={getStatusColor()}
+        />
+        <Text
+          style={[styles.status, { color: getStatusColor(), marginBottom: 0 }]}
+        >
+          {getStatusText()}
+        </Text>
+      </View>
 
       <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.actionButton, styles.primaryButton]}
           onPress={handleDirections}
         >
-          <Text style={styles.primaryButtonText}>Chỉ đường</Text>
+          <Text style={styles.primaryButtonText}>
+            {t("station.directions")}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.secondaryButton]}
           onPress={handleGoogleMaps}
         >
-          <Text style={styles.secondaryButtonText}>Google Map</Text>
+          <Text style={styles.secondaryButtonText}>
+            {t("station.googleMap")}
+          </Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -131,17 +179,25 @@ export default function StationCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: styleTokens.colors.card,
+    backgroundColor: styleTokens.colors.white,
     padding: styleTokens.padding,
     marginHorizontal: styleTokens.padding,
     marginVertical: styleTokens.spacing.xs,
     borderRadius: styleTokens.radius,
-    ...styleTokens.shadow,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   cardSelected: {
+    borderColor: styleTokens.colors.primaryAccent || styleTokens.colors.primary,
+    backgroundColor: styleTokens.colors.white,
     borderWidth: 2,
-    borderColor: styleTokens.colors.primary,
-    backgroundColor: styleTokens.colors.surface,
+    shadowOpacity: 0.15,
+    elevation: 5,
   },
   header: {
     flexDirection: "row",
@@ -156,10 +212,11 @@ const styles = StyleSheet.create({
   title: {
     ...styleTokens.typography.headline,
     marginBottom: 2,
+    color: styleTokens.colors.textDark,
   },
   distance: {
     ...styleTokens.typography.small,
-    color: styleTokens.colors.primary,
+    color: styleTokens.colors.primaryAccent || styleTokens.colors.primary,
   },
   rating: {
     backgroundColor: "rgba(255, 255, 255, 0.1)",
@@ -169,11 +226,12 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     ...styleTokens.typography.small,
-    color: styleTokens.colors.white,
+    color: styleTokens.colors.textDark,
   },
   address: {
     ...styleTokens.typography.subtitle,
     marginBottom: styleTokens.spacing.sm,
+    color: styleTokens.colors.textMuted,
   },
   info: {
     flexDirection: "row",
@@ -183,6 +241,7 @@ const styles = StyleSheet.create({
   typeText: {
     ...styleTokens.typography.small,
     flex: 1,
+    color: styleTokens.colors.textMuted,
   },
   hours: {
     ...styleTokens.typography.small,
@@ -192,6 +251,7 @@ const styles = StyleSheet.create({
     ...styleTokens.typography.body,
     fontWeight: "500",
     marginBottom: styleTokens.spacing.lg,
+    color: styleTokens.colors.textDark,
   },
   actions: {
     flexDirection: "row",
@@ -206,12 +266,13 @@ const styles = StyleSheet.create({
     ...styleTokens.touchTarget,
   },
   primaryButton: {
-    backgroundColor: styleTokens.colors.primary,
+    backgroundColor:
+      styleTokens.colors.primaryAccent || styleTokens.colors.primary,
   },
   secondaryButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: styleTokens.colors.primary,
+    borderColor: styleTokens.colors.primaryAccent || styleTokens.colors.primary,
   },
   primaryButtonText: {
     color: styleTokens.colors.white,
@@ -219,7 +280,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   secondaryButtonText: {
-    color: styleTokens.colors.primary,
+    color: styleTokens.colors.primaryAccent || styleTokens.colors.primary,
     fontSize: 14,
     fontWeight: "600",
   },

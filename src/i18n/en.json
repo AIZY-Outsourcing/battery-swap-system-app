@@ -135,5 +135,21 @@
   "profile.edit": "Edit profile",
   "settings.title": "Settings",
   "credits.manage": "Manage swaps",
-  "common.back": "Back"
+  "common.back": "Back",
+  "map.scooterMode.title": "Scooter mode",
+  "map.scooterMode.message": "Showing only stations with available batteries",
+  "map.toggle.list": "View list",
+  "map.toggle.map": "View map",
+  "map.selectedStation": "Selected station",
+  "map.allStations": "All stations",
+  "station.type.public": "Public station - Free parking",
+  "station.type.dealer": "Dealer - Paid parking",
+  "station.type.service": "Service workshop - Repair",
+  "station.type.other": "Other",
+  "station.status.available": "Available batteries: {{available}}/{{capacity}}",
+  "station.status.maintenance": "Maintenance",
+  "station.status.empty": "Out of batteries",
+  "station.open": "Open",
+  "station.directions": "Directions",
+  "station.googleMap": "Google Map"
 }

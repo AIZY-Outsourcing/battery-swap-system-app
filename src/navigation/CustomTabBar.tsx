@@ -104,6 +104,13 @@ export default function CustomTabBar({
               style={styles.item}
               activeOpacity={0.7}
             >
+              {/* Active top indicator bar */}
+              <View
+                style={[
+                  styles.activeBar,
+                  { backgroundColor: accent, opacity: isFocused ? 1 : 0 },
+                ]}
+              />
               <Icon
                 name={iconFor(route.name)}
                 size={24}
@@ -143,6 +150,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 6,
     marginBottom: 8, // lift items a bit so they don't feel too low
+  },
+  activeBar: {
+    height: 3,
+    width: 22,
+    borderRadius: 2,
+    marginBottom: 6,
   },
   icon: {
     fontSize: 22,

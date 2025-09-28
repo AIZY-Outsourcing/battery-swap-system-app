@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -22,6 +23,7 @@ type TabKey = "swap" | "payment" | "subscription";
 
 export default function HistoryScreen() {
   const [tab, setTab] = useState<TabKey>("swap");
+  const { t } = useTranslation();
 
   // Derive & sort data (newest first)
   const swapData = useMemo(
@@ -73,17 +75,17 @@ export default function HistoryScreen() {
     switch (status) {
       case "completed":
       case "success":
-        return "Hoàn thành";
+        return t("status.completed");
       case "pending":
-        return "Đang xử lý";
+        return t("status.pending");
       case "failed":
-        return "Thất bại";
+        return t("status.failed");
       case "cancelled":
-        return "Đã hủy";
+        return t("status.cancelled");
       case "active":
-        return "Đang hiệu lực";
+        return t("status.inEffect");
       case "expired":
-        return "Hết hạn";
+        return t("status.expired");
       default:
         return status;
     }
@@ -122,7 +124,7 @@ export default function HistoryScreen() {
               color="#374151"
             />
             <Text style={styles.batteryText}>
-              {item.oldBatteryId || "Pin cũ"}
+              {item.oldBatteryId || t("history.oldBattery")}
             </Text>
           </View>
           <MaterialCommunityIcons
@@ -138,20 +140,25 @@ export default function HistoryScreen() {
               color="#16a34a"
             />
             <Text style={styles.batteryText}>
-              {item.newBatteryId || "Pin mới"}
+              {item.newBatteryId || t("history.newBattery")}
             </Text>
           </View>
         </View>
         <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>Loại pin:</Text>
+          <Text style={styles.metaLabel}>{t("history.batteryType")}:</Text>
           <Text style={styles.metaValue}>{item.batteryType}</Text>
         </View>
         <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>Thanh toán:</Text>
+          <Text style={styles.metaLabel}>
+            {t("history.paymentMethodLabel", {
+              defaultValue: t("history.methodLabel"),
+            })}
+            :
+          </Text>
           <Text style={styles.metaValue}>
             {item.paymentMethod === "subscription"
-              ? "Gói đăng ký"
-              : "Trả theo lượt"}
+              ? t("history.paymentMethodSubscription")
+              : t("history.paymentMethodPayPerSwap")}
           </Text>
         </View>
       </View>
@@ -185,23 +192,23 @@ export default function HistoryScreen() {
           </View>
         </View>
         <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>Loại:</Text>
+          <Text style={styles.metaLabel}>{t("history.typeLabel")}:</Text>
           <Text style={styles.metaValue}>
             {item.type === "pay-per-swap"
-              ? "Đổi pin"
+              ? t("history.swapTab")
               : item.type === "subscription"
-              ? "Gói"
-              : "Khác"}
+              ? t("history.subscriptionTab")
+              : t("history.typeLabel")}
           </Text>
         </View>
         {item.invoiceId && (
           <View style={styles.inlineMeta}>
-            <Text style={styles.metaLabel}>Hóa đơn:</Text>
+            <Text style={styles.metaLabel}>{t("history.invoiceLabel")}:</Text>
             <Text style={styles.metaValue}>{item.invoiceId}</Text>
           </View>
         )}
         <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>Phương thức:</Text>
+          <Text style={styles.metaLabel}>{t("history.methodLabel")}:</Text>
           <Text style={styles.metaValue}>{item.paymentMethod}</Text>
         </View>
       </View>
@@ -232,20 +239,22 @@ export default function HistoryScreen() {
           </View>
         </View>
         <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>Loại:</Text>
+          <Text style={styles.metaLabel}>{t("history.typeLabel")}:</Text>
           <Text style={styles.metaValue}>
             {item.type === "unlimited"
-              ? "Không giới hạn"
-              : `${item.swapLimit} lần`}
+              ? t("history.unlimited")
+              : `${item.swapLimit} ${t("history.timesSuffix")}`}
           </Text>
         </View>
         <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>Thời hạn:</Text>
-          <Text style={styles.metaValue}>{item.duration} ngày</Text>
+          <Text style={styles.metaLabel}>{t("history.durationLabel")}:</Text>
+          <Text style={styles.metaValue}>
+            {item.duration} {t("history.daysSuffix")}
+          </Text>
         </View>
         {item.remainingSwaps !== undefined && (
           <View style={styles.inlineMeta}>
-            <Text style={styles.metaLabel}>Còn lại:</Text>
+            <Text style={styles.metaLabel}>{t("history.remainingLabel")}:</Text>
             <Text style={styles.metaValue}>{item.remainingSwaps}</Text>
           </View>
         )}
@@ -270,7 +279,7 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch sử</Text>
+        <Text style={styles.headerTitle}>{t("history.title")}</Text>
       </View>
       <View style={styles.tabsRow}>
         <TouchableOpacity
@@ -283,7 +292,8 @@ export default function HistoryScreen() {
           <Text
             style={[styles.tabText, tab === "swap" && styles.tabTextActive]}
           >
-            Đổi pin ({swapData.length})
+            {t("history.swapTab", { defaultValue: "Đổi pin" })} (
+            {swapData.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -296,7 +306,8 @@ export default function HistoryScreen() {
           <Text
             style={[styles.tabText, tab === "payment" && styles.tabTextActive]}
           >
-            Thanh toán ({paymentData.length})
+            {t("history.paymentTab", { defaultValue: "Thanh toán" })} (
+            {paymentData.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -312,16 +323,15 @@ export default function HistoryScreen() {
               tab === "subscription" && styles.tabTextActive,
             ]}
           >
-            Gói ({subscriptionData.length})
+            {t("history.subscriptionTab", { defaultValue: "Gói" })} (
+            {subscriptionData.length})
           </Text>
         </TouchableOpacity>
       </View>
       {currentData.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>Chưa có dữ liệu</Text>
-          <Text style={styles.emptySubtitle}>
-            Hiện chưa phát sinh bản ghi nào cho mục này.
-          </Text>
+          <Text style={styles.emptyTitle}>{t("history.emptyTitle")}</Text>
+          <Text style={styles.emptySubtitle}>{t("history.emptySubtitle")}</Text>
         </View>
       ) : (
         <FlatList

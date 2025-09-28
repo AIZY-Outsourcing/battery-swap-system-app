@@ -11,11 +11,13 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../../navigation/types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuthStore } from "../../../store/authStore";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = NativeStackScreenProps<AppStackParamList, "AccountDetails">;
 
 export default function AccountDetailsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const storeCredits = useAuthStore((s) => s.user?.swapCredits);
   // Mock data for demo
@@ -110,9 +112,9 @@ export default function AccountDetailsScreen({ navigation }: Props) {
                   color="#ffffff"
                 />
               </View>
-              <Text style={styles.summaryLabel}>Đổi lẻ</Text>
+              <Text style={styles.summaryLabel}>{t("credits.single")}</Text>
               <Text style={styles.summaryValue}>
-                {accountData.singleSwaps.count} lượt
+                {accountData.singleSwaps.count}
               </Text>
             </View>
             <View style={styles.dividerVertical} />
@@ -124,9 +126,9 @@ export default function AccountDetailsScreen({ navigation }: Props) {
                   color="#ffffff"
                 />
               </View>
-              <Text style={styles.summaryLabel}>Đổi gói</Text>
+              <Text style={styles.summaryLabel}>{t("credits.package")}</Text>
               <Text style={styles.summaryValue}>
-                {accountData.packageSwaps.history[0]?.swapsLeft ?? 0} lượt
+                {accountData.packageSwaps.history[0]?.swapsLeft ?? 0}
               </Text>
             </View>
           </View>
@@ -135,23 +137,29 @@ export default function AccountDetailsScreen({ navigation }: Props) {
         {/* Lượt đổi lẻ */}
         <View style={styles.section}>
           {renderSectionHeader(
-            "Lượt đổi lẻ",
-            `${accountData.singleSwaps.count} lượt`,
+            t("credits.singleSection"),
+            `${accountData.singleSwaps.count}`,
             "battery"
           )}
           <View style={styles.summaryGrid}>
             <View style={styles.summaryBox}>
-              <Text style={styles.summaryBoxLabel}>Lượt còn lại</Text>
-              <Text style={styles.summaryBoxValue}>{credits} lượt</Text>
+              <Text style={styles.summaryBoxLabel}>
+                {t("credits.remaining")}
+              </Text>
+              <Text style={styles.summaryBoxValue}>{credits}</Text>
             </View>
             <View style={styles.summaryBox}>
-              <Text style={styles.summaryBoxLabel}>Đã dùng (tháng)</Text>
+              <Text style={styles.summaryBoxLabel}>
+                {t("credits.usedThisMonth")}
+              </Text>
               <Text style={styles.summaryBoxValue}>
                 {accountData.singleSwaps.count}
               </Text>
             </View>
             <View style={styles.summaryBox}>
-              <Text style={styles.summaryBoxLabel}>Lần gần nhất</Text>
+              <Text style={styles.summaryBoxLabel}>
+                {t("credits.lastTime")}
+              </Text>
               <Text style={styles.summaryBoxValue}>
                 {accountData.singleSwaps.history[0]?.date.split(" ")[0] ?? "—"}
               </Text>
@@ -162,24 +170,25 @@ export default function AccountDetailsScreen({ navigation }: Props) {
         {/* Lượt đổi gói */}
         <View style={styles.section}>
           {renderSectionHeader(
-            "Lượt đổi gói",
+            t("credits.packageSection"),
             `${accountData.packageSwaps.history[0]?.swapsLeft ?? 0}/${
               accountData.packageSwaps.history[0]?.totalSwaps ?? 0
-            } lượt`,
+            }`,
             "package-variant-closed"
           )}
           {accountData.packageSwaps.history.map((package_) => (
             <View key={package_.id} style={styles.packageItem}>
               <View style={styles.packageHeader}>
                 <Text style={styles.packageName}>{package_.packageName}</Text>
-                <Text style={styles.packageStatus}>Đang hoạt động</Text>
+                <Text style={styles.packageStatus}>{t("credits.active")}</Text>
               </View>
               <View style={styles.packageDetails}>
                 <Text style={styles.packageInfo}>
-                  Còn lại: {package_.swapsLeft}/{package_.totalSwaps} lượt
+                  {t("credits.left")}: {package_.swapsLeft}/
+                  {package_.totalSwaps}
                 </Text>
                 <Text style={styles.packageExpiry}>
-                  Hết hạn: {package_.validUntil}
+                  {t("credits.expires")}: {package_.validUntil}
                 </Text>
                 <View style={styles.progressTrack}>
                   <View
@@ -214,7 +223,9 @@ export default function AccountDetailsScreen({ navigation }: Props) {
               size={18}
               color="#ffffff"
             />
-            <Text style={styles.actionButtonText}>Mua lượt</Text>
+            <Text style={styles.actionButtonText}>
+              {t("credits.buySingle")}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionSecondary]}
@@ -225,7 +236,9 @@ export default function AccountDetailsScreen({ navigation }: Props) {
               size={18}
               color="#5D7B6F"
             />
-            <Text style={styles.actionButtonTextSecondary}>Mua gói</Text>
+            <Text style={styles.actionButtonTextSecondary}>
+              {t("credits.buyPackage")}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

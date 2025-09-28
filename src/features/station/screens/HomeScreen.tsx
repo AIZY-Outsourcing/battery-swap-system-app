@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -33,6 +34,7 @@ type Props = CompositeScreenProps<
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [distance, setDistance] = useState<DistanceOpt>(10);
   const [batteryType, setBatteryType] = useState<BatteryOpt>("");
@@ -75,7 +77,9 @@ export default function HomeScreen({ navigation }: Props) {
             ]}
           >
             <Text style={styles.statusText}>
-              {item.available > 0 ? "Có sẵn" : "Hết pin"}
+              {item.available > 0
+                ? t("home.status.available")
+                : t("home.status.unavailable")}
             </Text>
           </View>
         </View>
@@ -88,7 +92,7 @@ export default function HomeScreen({ navigation }: Props) {
               {item.available}/{item.capacity}
             </Text>
           </View>
-          <Text style={styles.batteryTypes}>Pin A, B, C</Text>
+          <Text style={styles.batteryTypes}>{t("home.batteryTypes")}</Text>
         </View>
         <View style={styles.stationActions}>
           <TouchableOpacity
@@ -99,7 +103,7 @@ export default function HomeScreen({ navigation }: Props) {
                 ?.navigate("StationDetails", { stationId: String(item.id) })
             }
           >
-            <Text style={styles.detailButtonText}>Chi tiết</Text>
+            <Text style={styles.detailButtonText}>{t("home.details")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
@@ -115,7 +119,7 @@ export default function HomeScreen({ navigation }: Props) {
             }
           >
             <Text style={styles.reserveButtonText}>
-              {credits > 0 ? "Đặt trước" : "Hết lượt"}
+              {credits > 0 ? t("home.reserve") : t("home.noCredits")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -136,7 +140,7 @@ export default function HomeScreen({ navigation }: Props) {
       />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Trạm đổi pin</Text>
+        <Text style={styles.headerTitle}>{t("home.title")}</Text>
       </View>
 
       {/* Search Box */}
@@ -167,15 +171,19 @@ export default function HomeScreen({ navigation }: Props) {
 
           <View style={styles.transactionTypesContainer}>
             <View style={styles.walletItem}>
-              <Text style={styles.walletLabel}>Lượt Đổi Lẻ</Text>
-              <Text style={styles.walletAmount}>5 lượt</Text>
+              <Text style={styles.walletLabel}>{t("home.wallet.single")}</Text>
+              <Text style={styles.walletAmount}>
+                5 {t("history.timesSuffix")}
+              </Text>
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.walletItem}>
-              <Text style={styles.walletLabel}>Lượt Đổi Gói</Text>
-              <Text style={styles.walletAmount}>20/30 lượt</Text>
+              <Text style={styles.walletLabel}>{t("home.wallet.package")}</Text>
+              <Text style={styles.walletAmount}>
+                20/30 {t("history.timesSuffix")}
+              </Text>
             </View>
           </View>
 
@@ -189,7 +197,9 @@ export default function HomeScreen({ navigation }: Props) {
               {/* <View style={styles.financialIconContainer}>
                 <Text style={styles.financialIcon}>💳</Text>
               </View> */}
-              <Text style={styles.financialCenterText}>Quản Lý Lượt Đổi</Text>
+              <Text style={styles.financialCenterText}>
+                {t("home.wallet.manage")}
+              </Text>
               <Text style={styles.financialArrow}>›</Text>
             </View>
           </TouchableOpacity>
@@ -285,18 +295,16 @@ export default function HomeScreen({ navigation }: Props) {
       {/* Content states */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Đang tải danh sách trạm...</Text>
+          <Text style={styles.loadingText}>{t("home.loadingStations")}</Text>
         </View>
       ) : isError ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            Không tải được danh sách. Kiểm tra mạng và thử lại.
-          </Text>
+          <Text style={styles.emptyText}>{t("home.loadError")}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => refetch()}
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>{t("home.retry")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -308,7 +316,7 @@ export default function HomeScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Không có trạm phù hợp</Text>
+              <Text style={styles.emptyText}>{t("home.noStations")}</Text>
             </View>
           )}
         />
@@ -319,7 +327,7 @@ export default function HomeScreen({ navigation }: Props) {
         style={styles.fabButton}
         onPress={() => navigation.getParent()?.navigate("StationMap")}
         accessibilityRole="button"
-        accessibilityLabel="Mở bản đồ"
+        accessibilityLabel={t("home.mapOpen")}
       >
         <View style={styles.fabContent}>
           <MaterialCommunityIcons
@@ -327,7 +335,7 @@ export default function HomeScreen({ navigation }: Props) {
             size={18}
             color="#ffffff"
           />
-          <Text style={styles.fabText}>Bản đồ</Text>
+          <Text style={styles.fabText}>{t("home.map")}</Text>
         </View>
       </TouchableOpacity>
     </SafeAreaView>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -81,84 +82,110 @@ const MenuItem = ({ item }: { item: MenuItemDef }) => {
 };
 
 export default function ProfileScreen({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const [faceIDEnabled, setFaceIDEnabled] = useState(true);
   const activeSubscription = mockSubscriptions[0];
-  const [language, setLanguage] = useState<"vi" | "en">("vi");
+  const [language, setLanguage] = useState<"vi" | "en">(
+    i18n.language as "vi" | "en"
+  );
 
   const handleLogout = () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Đăng xuất",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await AuthService.clearAuth();
-            (navigation as any).getParent()?.reset({
-              index: 0,
-              routes: [{ name: "AuthStack" }],
-            });
-          } catch (error) {
-            Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại.");
-          }
+    Alert.alert(
+      t("logout"),
+      t("confirm.logout", { defaultValue: "Bạn có chắc chắn muốn đăng xuất?" }),
+      [
+        { text: t("common.cancel", { defaultValue: "Hủy" }), style: "cancel" },
+        {
+          text: t("logout"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AuthService.clearAuth();
+              (navigation as any).getParent()?.reset({
+                index: 0,
+                routes: [{ name: "AuthStack" }],
+              });
+            } catch (error) {
+              Alert.alert(
+                t("error.title", { defaultValue: "Lỗi" }),
+                t("error.logout", {
+                  defaultValue: "Không thể đăng xuất. Vui lòng thử lại.",
+                })
+              );
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
-  const accountMenu: MenuItemDef[] = [
-    {
-      key: "promo",
-      icon: "gift-outline",
-      label: "Khuyến mại",
-      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
-    },
-    {
-      key: "guide",
-      icon: "book-open-page-variant",
-      label: "Hướng dẫn sử dụng",
-      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
-    },
-    {
-      key: "faq",
-      icon: "help-circle-outline",
-      label: "Câu hỏi thường gặp",
-      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
-    },
-  ];
-  const supportMenu: MenuItemDef[] = [
-    {
-      key: "helpcenter",
-      icon: "headset",
-      label: "Trung tâm trợ giúp",
-      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
-    },
-    {
-      key: "support",
-      icon: "message-question-outline",
-      label: "Yêu cầu hỗ trợ",
-      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
-    },
-  ];
-  const legalMenu: MenuItemDef[] = [
-    {
-      key: "terms",
-      icon: "file-document-outline",
-      label: "Điều khoản sử dụng",
-      onPress: () => Alert.alert("Thông báo", "Tính năng đang phát triển"),
-    },
-  ];
+  const devAlert = () =>
+    Alert.alert(t("profile.developingTitle"), t("profile.developingMessage"));
+  const accountMenu: MenuItemDef[] = useMemo(
+    () => [
+      {
+        key: "promo",
+        icon: "gift-outline",
+        label: t("profile.promo"),
+        onPress: devAlert,
+      },
+      {
+        key: "guide",
+        icon: "book-open-page-variant",
+        label: t("profile.guide"),
+        onPress: devAlert,
+      },
+      {
+        key: "faq",
+        icon: "help-circle-outline",
+        label: t("profile.faq"),
+        onPress: devAlert,
+      },
+    ],
+    [t]
+  );
+  const supportMenu: MenuItemDef[] = useMemo(
+    () => [
+      {
+        key: "helpcenter",
+        icon: "headset",
+        label: t("profile.helpCenter"),
+        onPress: devAlert,
+      },
+      {
+        key: "support",
+        icon: "message-question-outline",
+        label: t("profile.supportRequest"),
+        onPress: devAlert,
+      },
+    ],
+    [t]
+  );
+  const legalMenu: MenuItemDef[] = useMemo(
+    () => [
+      {
+        key: "terms",
+        icon: "file-document-outline",
+        label: t("profile.terms"),
+        onPress: devAlert,
+      },
+    ],
+    [t]
+  );
 
-  const faceIdMenu: MenuItemDef[] = [
-    {
-      key: "faceid",
-      icon: "face-recognition",
-      label: "Đăng nhập bằng FaceID",
-      toggle: true,
-      toggleValue: faceIDEnabled,
-      onToggle: setFaceIDEnabled,
-    },
-  ];
+  const faceIdMenu: MenuItemDef[] = useMemo(
+    () => [
+      {
+        key: "faceid",
+        icon: "face-recognition",
+        label: t("faceid"),
+        toggle: true,
+        toggleValue: faceIDEnabled,
+        onToggle: setFaceIDEnabled,
+      },
+    ],
+    [t, faceIDEnabled]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -167,7 +194,7 @@ export default function ProfileScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Tài khoản</Text>
+          <Text style={styles.headerTitle}>{t("account.title")}</Text>
         </View>
 
         {/* Profile Card */}
@@ -181,7 +208,7 @@ export default function ProfileScreen({ navigation }: Props) {
               <Text style={styles.name}>{mockUser.name}</Text>
               <Text style={styles.meta}>{mockUser.phone}</Text>
               <Text style={styles.metaSmall}>
-                Loại pin: {mockUser.batteryType}
+                {t("profile.batteryTypeLabel")}: {mockUser.batteryType}
               </Text>
               {activeSubscription && (
                 <View style={styles.subscriptionBadge}>
@@ -200,17 +227,17 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={styles.quickStatsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{mockSubscriptions.length}</Text>
-              <Text style={styles.statLabel}>Gói</Text>
+              <Text style={styles.statLabel}>{t("subscriptions")}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statValue}>--</Text>
-              <Text style={styles.statLabel}>Đổi/tháng</Text>
+              <Text style={styles.statLabel}>{t("swapsPerMonth")}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statValue}>--</Text>
-              <Text style={styles.statLabel}>Điểm</Text>
+              <Text style={styles.statLabel}>{t("points")}</Text>
             </View>
           </View>
         </View>
@@ -225,7 +252,7 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* Account */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tài khoản</Text>
+            <Text style={styles.sectionTitle}>{t("account.title")}</Text>
           </View>
           {accountMenu.map((m) => (
             <MenuItem key={m.key} item={m} />
@@ -235,7 +262,9 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* Support */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Hỗ trợ</Text>
+            <Text style={styles.sectionTitle}>
+              {t("support.title", { defaultValue: "Hỗ trợ" })}
+            </Text>
           </View>
           {supportMenu.map((m) => (
             <MenuItem key={m.key} item={m} />
@@ -245,7 +274,9 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* Legal */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Pháp lý</Text>
+            <Text style={styles.sectionTitle}>
+              {t("legal.title", { defaultValue: "Pháp lý" })}
+            </Text>
           </View>
           {legalMenu.map((m) => (
             <MenuItem key={m.key} item={m} />
@@ -262,12 +293,15 @@ export default function ProfileScreen({ navigation }: Props) {
                 color="#334155"
                 style={{ marginRight: 12 }}
               />
-              <Text style={styles.menuLabel}>Ngôn ngữ</Text>
+              <Text style={styles.menuLabel}>{t("language.label")}</Text>
             </View>
             <View style={styles.languageSwitch}>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => setLanguage("vi")}
+                onPress={() => {
+                  setLanguage("vi");
+                  i18n.changeLanguage("vi");
+                }}
                 style={[
                   styles.languageOption,
                   language === "vi" && styles.languageOptionActive,
@@ -279,12 +313,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     language === "vi" && styles.languageOptionTextActive,
                   ]}
                 >
-                  VI
+                  {t("lang.vi")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => setLanguage("en")}
+                onPress={() => {
+                  setLanguage("en");
+                  i18n.changeLanguage("en");
+                }}
                 style={[
                   styles.languageOption,
                   language === "en" && styles.languageOptionActive,
@@ -296,7 +333,7 @@ export default function ProfileScreen({ navigation }: Props) {
                     language === "en" && styles.languageOptionTextActive,
                   ]}
                 >
-                  EN
+                  {t("lang.en")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -315,12 +352,12 @@ export default function ProfileScreen({ navigation }: Props) {
             color="#dc2626"
             style={{ marginRight: 10 }}
           />
-          <Text style={styles.logoutText}>Đăng xuất</Text>
+          <Text style={styles.logoutText}>{t("logout")}</Text>
         </TouchableOpacity>
 
         <View style={styles.versionBox}>
           <Text style={styles.versionText}>
-            Phiên bản 1.xx.x (2025.0818.0510)
+            {t("profile.version")} 1.xx.x (2025.0818.0510)
           </Text>
         </View>
       </ScrollView>

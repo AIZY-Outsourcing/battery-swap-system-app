@@ -8,10 +8,12 @@ import QRScanScreen from "../features/qr/screens/QRScanScreen";
 import HistoryScreen from "../features/history/screens/HistoryScreen";
 import ProfileScreen from "../features/profile/screens/ProfileScreen";
 import CustomTabBar from "./CustomTabBar";
+import { useTranslation } from "react-i18next";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainNavigator() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -26,7 +28,7 @@ export default function MainNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: "Trạm",
+          tabBarLabel: t("tab.home"),
           tabBarIcon: ({ color, size }) => (
             <Text style={{ fontSize: size - 4, color }}>🏠</Text>
           ),
@@ -38,7 +40,7 @@ export default function MainNavigator() {
         name="MyReservations"
         component={MyReservationsScreen}
         options={{
-          tabBarLabel: "Đặt trước",
+          tabBarLabel: t("tab.reservations"),
           tabBarIcon: ({ color, size }) => (
             <Text style={{ fontSize: size - 4, color }}>📑</Text>
           ),
@@ -50,7 +52,7 @@ export default function MainNavigator() {
         name="QRScan"
         component={QRScanScreen}
         options={{
-          tabBarLabel: "Quét QR",
+          tabBarLabel: t("tab.scan"),
           tabBarIcon: ({ color, size, focused }) => (
             <Text
               style={{
@@ -70,7 +72,7 @@ export default function MainNavigator() {
         name="History"
         component={HistoryScreen}
         options={{
-          tabBarLabel: "Lịch sử",
+          tabBarLabel: t("tab.history"),
           tabBarIcon: ({ color, size }) => (
             <Text style={{ fontSize: size - 4, color }}>🕒</Text>
           ),
@@ -82,7 +84,7 @@ export default function MainNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: "Cá nhân",
+          tabBarLabel: t("tab.profile"),
           tabBarIcon: ({ color, size }) => (
             <Text style={{ fontSize: size - 4, color }}>👤</Text>
           ),

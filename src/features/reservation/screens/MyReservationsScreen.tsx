@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { i18n } from "../../../i18n";
 import {
   View,
   Text,
@@ -19,6 +21,7 @@ import { styleTokens } from "../../../styles/tokens";
 type Props = NativeStackScreenProps<MainTabParamList, "MyReservations">;
 
 export default function MyReservationsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
   const [tab, setTab] = useState<"active" | "history">("active");
 
@@ -49,24 +52,33 @@ export default function MyReservationsScreen({ navigation }: Props) {
   );
 
   const handleCancelReservation = (reservationId: string) => {
-    Alert.alert("Hủy đặt pin", "Bạn có chắc chắn muốn hủy đặt pin này không?", [
-      { text: "Không", style: "cancel" },
+    Alert.alert(t("reservation.cancelTitle"), t("reservation.cancelMessage"), [
+      { text: t("reservation.cancelNo"), style: "cancel" },
       {
-        text: "Hủy đặt",
+        text: t("reservation.cancelConfirm"),
         style: "destructive",
         onPress: () => {
           // TODO: Integrate cancel reservation API
-          Alert.alert("Thành công", "Đã hủy đặt pin thành công!");
+          Alert.alert(
+            t("reservation.cancelSuccessTitle"),
+            t("reservation.cancelSuccessMessage")
+          );
         },
       },
     ]);
   };
 
   const statusConfig: Record<string, { label: string; color: string }> = {
-    active: { label: "Đang chờ", color: styleTokens.colors.success },
-    completed: { label: "Hoàn thành", color: styleTokens.colors.primary },
-    expired: { label: "Hết hạn", color: "#f59e0b" },
-    cancelled: { label: "Đã hủy", color: styleTokens.colors.danger },
+    active: { label: t("status.active"), color: styleTokens.colors.success },
+    completed: {
+      label: t("status.completed"),
+      color: styleTokens.colors.primary,
+    },
+    expired: { label: t("status.expired"), color: "#f59e0b" },
+    cancelled: {
+      label: t("status.cancelled"),
+      color: styleTokens.colors.danger,
+    },
   };
 
   const renderCard = useCallback(
@@ -108,22 +120,31 @@ export default function MyReservationsScreen({ navigation }: Props) {
               </View>
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Loại pin</Text>
+              <Text style={styles.metaLabel}>
+                {t("reservation.batteryTypeLabel")}
+              </Text>
               <Text style={styles.metaValue}>Pin {item.batteryType}</Text>
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Đặt lúc</Text>
+              <Text style={styles.metaLabel}>
+                {t("reservation.bookedAtLabel")}
+              </Text>
               <Text style={styles.metaValueSmall}>
-                {item.reservedAt.toLocaleString("vi-VN")}
+                {item.reservedAt.toLocaleString(
+                  i18n.language.startsWith("vi") ? "vi-VN" : "en-US"
+                )}
               </Text>
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Đến dự kiến</Text>
+              <Text style={styles.metaLabel}>{t("reservation.etaLabel")}</Text>
               <Text style={styles.metaValueSmall}>
-                {item.estimatedArrival.toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {item.estimatedArrival.toLocaleTimeString(
+                  i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                )}
               </Text>
             </View>
             {showCountdown && (
@@ -135,7 +156,9 @@ export default function MyReservationsScreen({ navigation }: Props) {
                     color={countdownVisual.icon}
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={[styles.countdownLabel]}>Còn lại</Text>
+                  <Text style={[styles.countdownLabel]}>
+                    {t("time.remaining")}
+                  </Text>
                 </View>
                 <Text
                   style={[
@@ -144,7 +167,10 @@ export default function MyReservationsScreen({ navigation }: Props) {
                   ]}
                 >
                   {item.remainingMinutes}
-                  <Text style={styles.countdownValueUnit}> phút</Text>
+                  <Text style={styles.countdownValueUnit}>
+                    {" "}
+                    {t("time.minutes")}
+                  </Text>
                 </Text>
               </View>
             )}
@@ -154,18 +180,22 @@ export default function MyReservationsScreen({ navigation }: Props) {
                   style={[styles.actionBtn, styles.cancelBtn]}
                   onPress={() => handleCancelReservation(item.id)}
                 >
-                  <Text style={styles.actionBtnText}>Hủy</Text>
+                  <Text style={styles.actionBtnText}>
+                    {t("reservation.cancel")}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.outlineBtn]}
                   onPress={() =>
                     Alert.alert(
-                      "Chỉ đường",
-                      "Mở ứng dụng bản đồ để đi đến trạm?"
+                      t("reservation.directionsTitle"),
+                      t("reservation.directionsMessage")
                     )
                   }
                 >
-                  <Text style={styles.outlineBtnText}>Chỉ đường</Text>
+                  <Text style={styles.outlineBtnText}>
+                    {t("reservation.navigate")}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -182,7 +212,7 @@ export default function MyReservationsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Đặt trước của tôi</Text>
+        <Text style={styles.headerTitle}>{t("reservations.title")}</Text>
       </View>
 
       {/* Tabs */}
@@ -198,7 +228,7 @@ export default function MyReservationsScreen({ navigation }: Props) {
           <Text
             style={[styles.tabText, tab === "active" && styles.tabTextActive]}
           >
-            Đang chờ ({activeReservations.length})
+            {t("status.active")} ({activeReservations.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -212,20 +242,20 @@ export default function MyReservationsScreen({ navigation }: Props) {
           <Text
             style={[styles.tabText, tab === "history" && styles.tabTextActive]}
           >
-            Lịch sử ({historyReservations.length})
+            {t("history.title", { defaultValue: "Lịch sử" })} (
+            {historyReservations.length})
           </Text>
         </TouchableOpacity>
       </View>
 
       {dataToRender.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>Chưa có đặt trước</Text>
+          <Text style={styles.emptyTitle}>{t("reservations.emptyTitle")}</Text>
           <Text style={styles.emptySubtitle}>
-            Bạn chưa tạo đặt trước nào. Tìm trạm phù hợp và đặt trước để giữ pin
-            sẵn sàng.
+            {t("reservations.emptySubtitle")}
           </Text>
           <Button
-            title="Tìm trạm"
+            title={t("cta.findStation")}
             onPress={() => navigation.navigate("Home")}
             variant="primary"
             size="medium"

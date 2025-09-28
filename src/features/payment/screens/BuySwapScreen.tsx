@@ -13,17 +13,19 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../navigation/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BuySwap">;
 
 const SWAP_OPTIONS = [
-  { id: "1", label: "1 lượt", swaps: 1, price: 25000 },
-  { id: "3", label: "3 lượt", swaps: 3, price: 70000 },
-  { id: "5", label: "5 lượt", swaps: 5, price: 110000 },
-  { id: "10", label: "10 lượt", swaps: 10, price: 210000 },
+  { id: "1", swaps: 1, price: 25000 },
+  { id: "3", swaps: 3, price: 70000 },
+  { id: "5", swaps: 5, price: 110000 },
+  { id: "10", swaps: 10, price: 210000 },
 ];
 
 export default function BuySwapScreen({ navigation, route }: Props) {
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const preset = route.params?.preset;
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -35,7 +37,9 @@ export default function BuySwapScreen({ navigation, route }: Props) {
 
   const selected = SWAP_OPTIONS.find((o) => o.id === selectedId) || null;
 
-  const formatVnd = (amount: number) => amount.toLocaleString("vi-VN") + "đ";
+  const formatVnd = (amount: number) =>
+    amount.toLocaleString(i18n.language.startsWith("vi") ? "vi-VN" : "en-US") +
+    (i18n.language.startsWith("vi") ? "đ" : "₫");
 
   const total = useMemo(() => {
     if (selected) return selected.price;
@@ -74,7 +78,10 @@ export default function BuySwapScreen({ navigation, route }: Props) {
 
   const handleConfirm = () => {
     if (!canPay) {
-      Alert.alert("Chưa chọn gói", "Vui lòng chọn số lượt muốn mua");
+      Alert.alert(
+        t("buySwap.alert.noSelection.title"),
+        t("buySwap.alert.noSelection.message")
+      );
       return;
     }
     navigation.navigate("PaymentScreen", {
@@ -89,7 +96,7 @@ export default function BuySwapScreen({ navigation, route }: Props) {
         style={styles.content}
         contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
       >
-        <Text style={styles.headerTitle}>Chọn số lượt đổi</Text>
+        <Text style={styles.headerTitle}>{t("buySwap.title")}</Text>
 
         <View style={styles.grid}>
           {SWAP_OPTIONS.map((opt) => {
@@ -109,7 +116,9 @@ export default function BuySwapScreen({ navigation, route }: Props) {
                     color={active ? "#ffffff" : "#5D7B6F"}
                   />
                 </View>
-                <Text style={styles.cardTitle}>{opt.label}</Text>
+                <Text style={styles.cardTitle}>
+                  {opt.swaps} {i18n.language.startsWith("vi") ? "lượt" : "x"}
+                </Text>
                 <Text
                   style={[styles.cardPrice, active && styles.cardPriceActive]}
                 >
@@ -128,7 +137,7 @@ export default function BuySwapScreen({ navigation, route }: Props) {
               size={18}
               color="#5D7B6F"
             />
-            <Text style={styles.customTitle}>Tự chọn số lượt</Text>
+            <Text style={styles.customTitle}>{t("buySwap.custom")}</Text>
           </View>
           <View style={styles.customRow}>
             <TouchableOpacity style={styles.stepBtn} onPress={handleDec}>
@@ -146,9 +155,12 @@ export default function BuySwapScreen({ navigation, route }: Props) {
             <TouchableOpacity style={styles.stepBtn} onPress={handleInc}>
               <Text style={styles.stepBtnText}>＋</Text>
             </TouchableOpacity>
-            <Text style={styles.perUnit}>x {formatVnd(BASE_PRICE)}/lượt</Text>
+            <Text style={styles.perUnit}>
+              x {formatVnd(BASE_PRICE)}
+              {t("buySwap.unitSuffix")}
+            </Text>
           </View>
-          <Text style={styles.note}>Tối đa 100 lượt cho mỗi lần mua</Text>
+          <Text style={styles.note}>{t("buySwap.noteMax")}</Text>
         </View>
 
         {/* Benefits */}
@@ -160,7 +172,7 @@ export default function BuySwapScreen({ navigation, route }: Props) {
               color="#5D7B6F"
             />
             <Text style={styles.benefitText}>
-              Kích hoạt ngay khi thanh toán
+              {t("buySwap.benefit.instant")}
             </Text>
           </View>
           {/* <View style={styles.benefitRow}>
@@ -177,7 +189,7 @@ export default function BuySwapScreen({ navigation, route }: Props) {
       {/* Sticky footer */}
       <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Tổng thanh toán</Text>
+          <Text style={styles.summaryLabel}>{t("buySwap.total")}</Text>
           <Text style={styles.summaryValue}>
             {canPay ? formatVnd(total) : "—"}
           </Text>
@@ -192,7 +204,7 @@ export default function BuySwapScreen({ navigation, route }: Props) {
             size={18}
             color="#ffffff"
           />
-          <Text style={styles.payBtnText}>Thanh toán</Text>
+          <Text style={styles.payBtnText}>{t("buySwap.pay")}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../navigation/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BuyPackage">;
 
@@ -28,41 +29,47 @@ type SubscriptionPackage = {
 const PACKAGES: SubscriptionPackage[] = [
   {
     id: "m1",
-    name: "Gói tháng",
+    name: "monthly",
     duration: 30,
     price: 2000000,
-    description: "Đổi pin không giới hạn trong 30 ngày",
+    description: "30",
     unlimited: true,
     popular: true,
   },
   {
     id: "m3",
-    name: "Gói 3 tháng",
+    name: "3months",
     duration: 90,
     price: 5500000,
-    description: "Không giới hạn 90 ngày - Tiết kiệm 500.000đ",
+    description: "90",
     unlimited: true,
   },
   {
     id: "m6",
-    name: "Gói 6 tháng",
+    name: "6months",
     duration: 180,
     price: 10000000,
-    description: "Không giới hạn 180 ngày - Tiết kiệm 1.000.000đ",
+    description: "180",
     unlimited: true,
   },
 ];
 
 export default function BuyPackageScreen({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = PACKAGES.find((p) => p.id === selectedId) || null;
 
-  const formatVnd = (amount: number) => amount.toLocaleString("vi-VN") + "đ";
+  const formatVnd = (amount: number) =>
+    amount.toLocaleString(i18n.language.startsWith("vi") ? "vi-VN" : "en-US") +
+    (i18n.language.startsWith("vi") ? "đ" : "₫");
 
   const handleConfirm = () => {
     if (!selected) {
-      Alert.alert("Chưa chọn gói", "Vui lòng chọn gói đăng ký");
+      Alert.alert(
+        t("buyPackage.alert.noSelection.title"),
+        t("buyPackage.alert.noSelection.message")
+      );
       return;
     }
     navigation.navigate("PaymentScreen", {
@@ -78,7 +85,7 @@ export default function BuyPackageScreen({ navigation }: Props) {
         style={styles.content}
         contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
       >
-        <Text style={styles.headerTitle}>Chọn gói đăng ký</Text>
+        <Text style={styles.headerTitle}>{t("buyPackage.title")}</Text>
 
         {PACKAGES.map((pkg) => {
           const active = selectedId === pkg.id;
@@ -90,7 +97,9 @@ export default function BuyPackageScreen({ navigation }: Props) {
             >
               {pkg.popular && (
                 <View style={styles.popularBadge}>
-                  <Text style={styles.popularText}>PHỔ BIẾN</Text>
+                  <Text style={styles.popularText}>
+                    {t("buyPackage.popular")}
+                  </Text>
                 </View>
               )}
               <View style={styles.cardHeader}>
@@ -104,10 +113,25 @@ export default function BuyPackageScreen({ navigation }: Props) {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{pkg.name}</Text>
+                  <Text style={styles.cardTitle}>
+                    {pkg.name === "monthly" &&
+                      (i18n.language.startsWith("vi")
+                        ? "Gói tháng"
+                        : "Monthly")}
+                    {pkg.name === "3months" &&
+                      (i18n.language.startsWith("vi")
+                        ? "Gói 3 tháng"
+                        : "3 Months")}
+                    {pkg.name === "6months" &&
+                      (i18n.language.startsWith("vi")
+                        ? "Gói 6 tháng"
+                        : "6 Months")}
+                  </Text>
                   <Text style={styles.cardSubtitle}>
-                    {pkg.duration} ngày •{" "}
-                    {pkg.unlimited ? "Không giới hạn" : "Giới hạn"}
+                    {pkg.duration} {t("buyPackage.days")} •{" "}
+                    {pkg.unlimited
+                      ? t("buyPackage.unlimited")
+                      : t("buyPackage.limited")}
                   </Text>
                 </View>
                 <Text
@@ -120,7 +144,20 @@ export default function BuyPackageScreen({ navigation }: Props) {
                   {formatVnd(pkg.price)}
                 </Text>
               </View>
-              <Text style={styles.cardDesc}>{pkg.description}</Text>
+              <Text style={styles.cardDesc}>
+                {pkg.description === "30" &&
+                  (i18n.language.startsWith("vi")
+                    ? "Đổi pin không giới hạn trong 30 ngày"
+                    : "Unlimited swaps for 30 days")}
+                {pkg.description === "90" &&
+                  (i18n.language.startsWith("vi")
+                    ? "Không giới hạn 90 ngày - Tiết kiệm 500.000đ"
+                    : "Unlimited 90 days - Save 500,000₫")}
+                {pkg.description === "180" &&
+                  (i18n.language.startsWith("vi")
+                    ? "Không giới hạn 180 ngày - Tiết kiệm 1.000.000đ"
+                    : "Unlimited 180 days - Save 1,000,000₫")}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -129,7 +166,7 @@ export default function BuyPackageScreen({ navigation }: Props) {
       {/* Sticky footer */}
       <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Tổng thanh toán</Text>
+          <Text style={styles.summaryLabel}>{t("buyPackage.total")}</Text>
           <Text style={styles.summaryValue}>
             {selected ? formatVnd(selected.price) : "—"}
           </Text>
@@ -144,7 +181,7 @@ export default function BuyPackageScreen({ navigation }: Props) {
             size={18}
             color="#ffffff"
           />
-          <Text style={styles.payBtnText}>Thanh toán</Text>
+          <Text style={styles.payBtnText}>{t("buyPackage.pay")}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

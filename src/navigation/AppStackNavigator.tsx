@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./types";
 
@@ -38,6 +39,7 @@ import StationMapScreen from "../features/station/screens/StationMapScreen";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppStackNavigator() {
+  const { t } = useTranslation();
   return (
     <Stack.Navigator
       initialRouteName="MainTabs"
@@ -54,8 +56,8 @@ export default function AppStackNavigator() {
         component={StationDetailScreen}
         options={{
           headerShown: true,
-          title: "Chi tiết trạm",
-          headerBackTitle: "Trở về",
+          title: t("station.details"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -63,8 +65,8 @@ export default function AppStackNavigator() {
         component={StationMapScreen}
         options={{
           headerShown: true,
-          title: "Bản đồ trạm",
-          headerBackTitle: "Trở về",
+          title: t("station.map"),
+          headerBackTitle: t("common.back"),
         }}
       />
 
@@ -83,8 +85,8 @@ export default function AppStackNavigator() {
         component={QRScanScreen}
         options={{
           headerShown: true,
-          title: "Quét QR",
-          headerBackTitle: "Trở về",
+          title: "QR",
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -108,8 +110,8 @@ export default function AppStackNavigator() {
         component={SwapHistoryScreen}
         options={{
           headerShown: true,
-          title: "Lịch sử đổi pin",
-          headerBackTitle: "Trở về",
+          title: t("swap.history"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -127,8 +129,8 @@ export default function AppStackNavigator() {
         component={PaymentMethodsScreen}
         options={{
           headerShown: true,
-          title: "Phương thức thanh toán",
-          headerBackTitle: "Trở về",
+          title: t("payment.methods"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -136,8 +138,8 @@ export default function AppStackNavigator() {
         component={PaymentScreen}
         options={{
           headerShown: true,
-          title: "Thanh toán",
-          headerBackTitle: "Trở về",
+          title: t("payment.title"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -145,8 +147,8 @@ export default function AppStackNavigator() {
         component={TopUpScreen}
         options={{
           headerShown: true,
-          title: "Nạp tiền",
-          headerBackTitle: "Trở về",
+          title: t("payment.topUp"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -154,8 +156,8 @@ export default function AppStackNavigator() {
         component={PaymentHistoryScreen}
         options={{
           headerShown: true,
-          title: "Lịch sử thanh toán",
-          headerBackTitle: "Trở về",
+          title: t("payment.history"),
+          headerBackTitle: t("common.back"),
         }}
       />
 
@@ -165,8 +167,8 @@ export default function AppStackNavigator() {
         component={BuySwapScreen}
         options={{
           headerShown: true,
-          title: "Mua lượt đổi",
-          headerBackTitle: "Trở về",
+          title: t("buySwap.header"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -174,8 +176,8 @@ export default function AppStackNavigator() {
         component={BuyPackageScreen}
         options={{
           headerShown: true,
-          title: "Mua gói",
-          headerBackTitle: "Trở về",
+          title: t("buyPackage.header"),
+          headerBackTitle: t("common.back"),
         }}
       />
 
@@ -203,8 +205,8 @@ export default function AppStackNavigator() {
         component={EditProfileScreen}
         options={{
           headerShown: true,
-          title: "Chỉnh sửa hồ sơ",
-          headerBackTitle: "Trở về",
+          title: t("profile.edit"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -212,8 +214,8 @@ export default function AppStackNavigator() {
         component={SettingsScreen}
         options={{
           headerShown: true,
-          title: "Cài đặt",
-          headerBackTitle: "Trở về",
+          title: t("settings.title"),
+          headerBackTitle: t("common.back"),
         }}
       />
       <Stack.Screen
@@ -221,8 +223,8 @@ export default function AppStackNavigator() {
         component={AccountDetailsScreen}
         options={{
           headerShown: true,
-          title: "Quản lý lượt đổi",
-          headerBackTitle: "Trở về",
+          title: t("credits.manage"),
+          headerBackTitle: t("common.back"),
         }}
       />
     </Stack.Navigator>

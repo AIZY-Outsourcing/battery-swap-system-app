@@ -320,7 +320,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <View style={styles.versionBox}>
           <Text style={styles.versionText}>
-            Phiên bản 2.30.6 (2025.0818.1510)
+            Phiên bản 1.xx.x (2025.0818.0510)
           </Text>
         </View>
       </ScrollView>

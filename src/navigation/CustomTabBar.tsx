@@ -20,7 +20,7 @@ export default function CustomTabBar({
   descriptors,
   navigation,
 }: BottomTabBarProps) {
-  const accent = "#5D7B6F"; // primary accent used in app
+  const accent = "#5D7B6F"; // original app accent green
   const inactive = "#8E8E93";
   const insets = useSafeAreaInsets();
   const bottomGap = Math.max(insets.bottom + 6, 12); // keep some distance from system gesture

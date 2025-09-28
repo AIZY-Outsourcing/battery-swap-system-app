@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,15 +12,39 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { MainTabParamList } from "../../../navigation/types";
 import { mockReservations } from "../../../data/mockData";
 import type { Reservation } from "../../../data/mockData";
+import Button from "../../../components/ui/Button";
+import { styleTokens } from "../../../styles/tokens";
 
 type Props = NativeStackScreenProps<MainTabParamList, "MyReservations">;
 
 export default function MyReservationsScreen({ navigation }: Props) {
-  const activeReservations = mockReservations.filter(
-    (r) => r.status === "active"
+  const [now, setNow] = useState(Date.now());
+  const [tab, setTab] = useState<"active" | "history">("active");
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60 * 1000); // update each minute
+    return () => clearInterval(id);
+  }, []);
+
+  const reservationsAugmented = useMemo(() => {
+    return mockReservations.map((r) => {
+      const remainingMs = r.expiredAt.getTime() - now;
+      const remainingMinutes = Math.max(0, Math.floor(remainingMs / 60000));
+      // derive dynamic expired status
+      const derivedStatus =
+        r.status === "active" && remainingMinutes === 0 ? "expired" : r.status;
+      return { ...r, remainingMinutes, derivedStatus } as Reservation & {
+        remainingMinutes: number;
+        derivedStatus: Reservation["status"];
+      };
+    });
+  }, [now]);
+
+  const activeReservations = reservationsAugmented.filter(
+    (r) => r.derivedStatus === "active"
   );
-  const pastReservations = mockReservations.filter(
-    (r) => r.status !== "active"
+  const historyReservations = reservationsAugmented.filter(
+    (r) => r.derivedStatus !== "active"
   );
 
   const handleCancelReservation = (reservationId: string) => {
@@ -30,150 +54,150 @@ export default function MyReservationsScreen({ navigation }: Props) {
         text: "Hủy đặt",
         style: "destructive",
         onPress: () => {
-          // TODO: Implement cancel reservation logic
+          // TODO: Integrate cancel reservation API
           Alert.alert("Thành công", "Đã hủy đặt pin thành công!");
         },
       },
     ]);
   };
 
-  const renderReservationItem = ({ item }: { item: Reservation }) => {
-    const isActive = item.status === "active";
-    const timeRemaining = isActive
-      ? Math.max(
-          0,
-          Math.floor((item.expiredAt.getTime() - Date.now()) / (1000 * 60))
-        )
-      : 0;
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    active: { label: "Đang chờ", color: styleTokens.colors.success },
+    completed: { label: "Hoàn thành", color: styleTokens.colors.primary },
+    expired: { label: "Hết hạn", color: "#f59e0b" },
+    cancelled: { label: "Đã hủy", color: styleTokens.colors.danger },
+  };
 
-    return (
-      <View
-        style={[
-          styles.reservationCard,
-          isActive ? styles.activeCard : styles.pastCard,
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={styles.stationName}>{item.stationName}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          >
-            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+  const renderCard = useCallback(
+    (
+      item: Reservation & { remainingMinutes: number; derivedStatus: string }
+    ) => {
+      const cfg = statusConfig[item.derivedStatus] || statusConfig[item.status];
+      const showCountdown = item.derivedStatus === "active";
+
+      return (
+        <View style={styles.cardWrapper}>
+          <View style={[styles.reservationCard]}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.stationName}>{item.stationName}</Text>
+              <View style={[styles.badge, { backgroundColor: cfg.color }]}>
+                <Text style={styles.badgeText}>{cfg.label}</Text>
+              </View>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Loại pin</Text>
+              <Text style={styles.metaValue}>Pin {item.batteryType}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Đặt lúc</Text>
+              <Text style={styles.metaValueSmall}>
+                {item.reservedAt.toLocaleString("vi-VN")}
+              </Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Đến dự kiến</Text>
+              <Text style={styles.metaValueSmall}>
+                {item.estimatedArrival.toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
+            {showCountdown && (
+              <View style={[styles.countdownBox]}>
+                <Text style={styles.countdownLabel}>Còn lại</Text>
+                <Text style={styles.countdownValue}>
+                  {item.remainingMinutes} phút
+                </Text>
+              </View>
+            )}
+            {showCountdown && (
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.cancelBtn]}
+                  onPress={() => handleCancelReservation(item.id)}
+                >
+                  <Text style={styles.actionBtnText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.outlineBtn]}
+                  onPress={() =>
+                    Alert.alert(
+                      "Chỉ đường",
+                      "Mở ứng dụng bản đồ để đi đến trạm?"
+                    )
+                  }
+                >
+                  <Text style={styles.outlineBtnText}>Chỉ đường</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
+      );
+    },
+    [statusConfig]
+  );
 
-        <View style={styles.cardBody}>
-          <Text style={styles.batteryType}>Loại pin: {item.batteryType}</Text>
-          <Text style={styles.reservedTime}>
-            Đặt lúc: {item.reservedAt.toLocaleString("vi-VN")}
-          </Text>
-          {isActive && (
-            <Text style={styles.expiredTime}>
-              Thời gian còn lại: {timeRemaining} phút
-            </Text>
-          )}
-        </View>
-
-        {isActive && (
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => handleCancelReservation(item.id)}
-            >
-              <Text style={styles.cancelButtonText}>Hủy đặt</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.navigationButton}
-              onPress={() => {
-                // TODO: Navigate to station or show directions
-                Alert.alert("Chỉ đường", "Mở ứng dụng bản đồ để đi đến trạm?");
-              }}
-            >
-              <Text style={styles.navigationButtonText}>Chỉ đường</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "#4CAF50";
-      case "completed":
-        return "#2196F3";
-      case "expired":
-        return "#FF9800";
-      case "cancelled":
-        return "#F44336";
-      default:
-        return "#9E9E9E";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Đang chờ";
-      case "completed":
-        return "Hoàn thành";
-      case "expired":
-        return "Hết hạn";
-      case "cancelled":
-        return "Đã hủy";
-      default:
-        return status;
-    }
-  };
+  const dataToRender =
+    tab === "active" ? activeReservations : historyReservations;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Đặt trước của tôi</Text>
       </View>
 
-      <View style={styles.content}>
-        {activeReservations.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Đang chờ</Text>
-            <FlatList
-              data={activeReservations}
-              renderItem={renderReservationItem}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-            />
-          </>
-        )}
-
-        {pastReservations.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Lịch sử</Text>
-            <FlatList
-              data={pastReservations}
-              renderItem={renderReservationItem}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-            />
-          </>
-        )}
-
-        {mockReservations.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Chưa có lịch đặt pin nào</Text>
-            <TouchableOpacity
-              style={styles.findStationButton}
-              onPress={() => navigation.navigate("Home")}
-            >
-              <Text style={styles.findStationButtonText}>Tìm trạm đổi pin</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+      {/* Tabs */}
+      <View style={styles.tabsRow}>
+        <TouchableOpacity
+          onPress={() => setTab("active")}
+          style={[styles.tabBtn, tab === "active" && styles.tabActive]}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[styles.tabText, tab === "active" && styles.tabTextActive]}
+          >
+            Đang chờ ({activeReservations.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setTab("history")}
+          style={[styles.tabBtn, tab === "history" && styles.tabActive]}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[styles.tabText, tab === "history" && styles.tabTextActive]}
+          >
+            Lịch sử ({historyReservations.length})
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {dataToRender.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Chưa có đặt trước</Text>
+          <Text style={styles.emptySubtitle}>
+            Bạn chưa tạo đặt trước nào. Tìm trạm phù hợp và đặt trước để giữ pin
+            sẵn sàng.
+          </Text>
+          <Button
+            title="Tìm trạm"
+            onPress={() => navigation.navigate("Home")}
+            variant="primary"
+            size="medium"
+            style={styles.ctaBtn}
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={dataToRender}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => renderCard(item as any)}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -181,133 +205,168 @@ export default function MyReservationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#b0d4b8",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: styleTokens.spacing.lg,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    alignItems: "center",
+    paddingVertical: styleTokens.spacing.lg,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
+    ...styleTokens.typography.headline,
+    fontSize: 20,
+    textAlign: "center",
+    color: "#111827",
   },
-  content: {
+  tabsRow: {
+    flexDirection: "row",
+    backgroundColor: "#f1f5f9",
+    borderRadius: styleTokens.radius,
+    padding: 4,
+    marginBottom: styleTokens.spacing.lg,
+  },
+  tabBtn: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: styleTokens.radius - 4,
+    alignItems: "center",
   },
-  sectionTitle: {
-    fontSize: 16,
+  tabActive: {
+    backgroundColor: "#5D7B6F",
+  },
+  tabText: {
+    fontSize: 14,
     fontWeight: "600",
-    color: "#000000",
-    marginTop: 16,
-    marginBottom: 12,
+    color: "#64748b",
+  },
+  tabTextActive: {
+    color: styleTokens.colors.white,
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  cardWrapper: {
+    marginBottom: styleTokens.spacing.lg,
   },
   reservationCard: {
     backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-  },
-  activeCard: {
-    borderLeftColor: "#5D7B6F",
-  },
-  pastCard: {
-    borderLeftColor: "#666666",
+    borderRadius: styleTokens.radius,
+    padding: styleTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: styleTokens.spacing.md,
   },
   stationName: {
+    flex: 1,
+    color: "#111827",
     fontSize: 16,
     fontWeight: "600",
-    color: "#000000",
-    flex: 1,
+    paddingRight: 8,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
-  statusText: {
+  badgeText: {
     fontSize: 10,
-    fontWeight: "500",
-    color: "#000000",
+    fontWeight: "600",
+    color: styleTokens.colors.white,
+    letterSpacing: 0.5,
   },
-  cardBody: {
-    marginBottom: 12,
-  },
-  batteryType: {
-    fontSize: 14,
-    color: "#5D7B6F",
-    marginBottom: 4,
-    fontWeight: "500",
-  },
-  reservedTime: {
-    fontSize: 14,
-    color: "#888888",
-    marginBottom: 4,
-  },
-  expiredTime: {
-    fontSize: 14,
-    color: "#f59e0b",
-    fontWeight: "500",
-  },
-  cardActions: {
+  metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 8,
+    marginBottom: 6,
   },
-  cancelButton: {
+  metaLabel: {
+    fontSize: 13,
+    color: "#64748b",
+  },
+  metaValue: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: "600",
+  },
+  metaValueSmall: {
+    fontSize: 13,
+    color: "#111827",
+  },
+  countdownBox: {
+    marginTop: 10,
+    backgroundColor: "#f1f5f9",
+    padding: 10,
+    borderRadius: styleTokens.radius - 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  countdownLabel: {
+    fontSize: 13,
+    color: "#64748b",
+  },
+  countdownValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: styleTokens.colors.primary,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    marginTop: styleTokens.spacing.md,
+    gap: styleTokens.spacing.md,
+  },
+  actionBtn: {
     flex: 1,
-    backgroundColor: "#ef4444",
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: styleTokens.radius - 6,
     alignItems: "center",
   },
-  cancelButtonText: {
-    color: "#000000",
-    fontWeight: "500",
+  cancelBtn: {
+    backgroundColor: styleTokens.colors.danger,
+  },
+  actionBtnText: {
+    color: styleTokens.colors.white,
+    fontWeight: "600",
     fontSize: 14,
   },
-  navigationButton: {
-    flex: 1,
-    backgroundColor: "#5D7B6F",
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
+  outlineBtn: {
+    borderWidth: 1,
+    borderColor: styleTokens.colors.primary,
+    backgroundColor: "transparent",
   },
-  navigationButtonText: {
-    color: "#000000",
-    fontWeight: "500",
+  outlineBtnText: {
+    color: styleTokens.colors.primary,
+    fontWeight: "600",
     fontSize: 14,
   },
-  emptyState: {
+  emptyWrap: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: styleTokens.spacing.xl,
   },
-  emptyStateText: {
-    fontSize: 16,
-    color: "#888888",
-    marginBottom: 20,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: styleTokens.spacing.sm,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#64748b",
     textAlign: "center",
+    marginBottom: styleTokens.spacing.lg,
+    lineHeight: 20,
   },
-  findStationButton: {
-    backgroundColor: "#5D7B6F",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  findStationButtonText: {
-    color: "#000000",
-    fontSize: 16,
-    fontWeight: "500",
+  ctaBtn: {
+    alignSelf: "stretch",
   },
 });

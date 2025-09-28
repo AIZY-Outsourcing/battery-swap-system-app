@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,127 +7,72 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from "react-native";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import {
+  mockSwapHistory,
+  mockPaymentHistory,
+  mockSubscriptions,
+  type SwapTransaction,
+  type PaymentHistory,
+  type Subscription,
+} from "../../../data/mockData";
+import { styleTokens } from "../../../styles/tokens";
 
-interface SwapHistoryItem {
-  id: string;
-  date: string;
-  time: string;
-  station: string;
-  batteryFrom: string;
-  batteryTo: string;
-  cost: number;
-  status: "completed" | "cancelled" | "pending";
-}
-
-interface PaymentHistoryItem {
-  id: string;
-  date: string;
-  time: string;
-  type: "swap" | "subscription" | "deposit";
-  description: string;
-  amount: number;
-  status: "completed" | "failed" | "pending";
-}
+type TabKey = "swap" | "payment" | "subscription";
 
 export default function HistoryScreen() {
-  const [activeTab, setActiveTab] = useState<"swap" | "payment">("swap");
+  const [tab, setTab] = useState<TabKey>("swap");
 
-  const swapHistory: SwapHistoryItem[] = [
-    {
-      id: "1",
-      date: "27/09/2025",
-      time: "14:30",
-      station: "Trạm Cầu Giấy - A1",
-      batteryFrom: "Pin 75%",
-      batteryTo: "Pin 100%",
-      cost: 15000,
-      status: "completed",
-    },
-    {
-      id: "2",
-      date: "26/09/2025",
-      time: "09:15",
-      station: "Trạm Hoàn Kiếm - B2",
-      batteryFrom: "Pin 25%",
-      batteryTo: "Pin 95%",
-      cost: 20000,
-      status: "completed",
-    },
-    {
-      id: "3",
-      date: "25/09/2025",
-      time: "18:45",
-      station: "Trạm Thanh Xuân - C3",
-      batteryFrom: "Pin 30%",
-      batteryTo: "Pin 100%",
-      cost: 18000,
-      status: "completed",
-    },
-  ];
+  // Derive & sort data (newest first)
+  const swapData = useMemo(
+    () =>
+      [...mockSwapHistory].sort(
+        (a, b) => b.swapDate.getTime() - a.swapDate.getTime()
+      ),
+    []
+  );
+  const paymentData = useMemo(
+    () =>
+      [...mockPaymentHistory].sort(
+        (a, b) => b.paymentDate.getTime() - a.paymentDate.getTime()
+      ),
+    []
+  );
+  const subscriptionData = useMemo(
+    () =>
+      [...mockSubscriptions].sort(
+        (a, b) => b.startDate.getTime() - a.startDate.getTime()
+      ),
+    []
+  );
 
-  const paymentHistory: PaymentHistoryItem[] = [
-    {
-      id: "1",
-      date: "27/09/2025",
-      time: "14:30",
-      type: "swap",
-      description: "Đổi pin tại Trạm Cầu Giấy - A1",
-      amount: 15000,
-      status: "completed",
-    },
-    {
-      id: "2",
-      date: "26/09/2025",
-      time: "09:15",
-      type: "swap",
-      description: "Đổi pin tại Trạm Hoàn Kiếm - B2",
-      amount: 20000,
-      status: "completed",
-    },
-    {
-      id: "3",
-      date: "25/09/2025",
-      time: "00:00",
-      type: "subscription",
-      description: "Gói đăng ký hàng tháng",
-      amount: 500000,
-      status: "completed",
-    },
-    {
-      id: "4",
-      date: "24/09/2025",
-      time: "18:45",
-      type: "swap",
-      description: "Đổi pin tại Trạm Thanh Xuân - C3",
-      amount: 18000,
-      status: "completed",
-    },
-  ];
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(amount);
-  };
 
-  const getStatusColor = (status: string) => {
+  const statusColor = (status: string) => {
     switch (status) {
       case "completed":
+      case "success": // payment success
+      case "active":
         return "#22c55e";
       case "pending":
         return "#f59e0b";
       case "failed":
       case "cancelled":
+      case "expired":
         return "#ef4444";
       default:
         return "#6b7280";
     }
   };
 
-  const getStatusText = (status: string) => {
+  const statusText = (status: string) => {
     switch (status) {
       case "completed":
+      case "success":
         return "Hoàn thành";
       case "pending":
         return "Đang xử lý";
@@ -135,132 +80,249 @@ export default function HistoryScreen() {
         return "Thất bại";
       case "cancelled":
         return "Đã hủy";
+      case "active":
+        return "Đang hiệu lực";
+      case "expired":
+        return "Hết hạn";
       default:
         return status;
     }
   };
 
-  const renderSwapItem = ({ item }: { item: SwapHistoryItem }) => (
-    <View style={styles.historyItem}>
-      <View style={styles.itemHeader}>
-        <View style={styles.itemInfo}>
-          <Text style={styles.stationName}>{item.station}</Text>
-          <Text style={styles.dateTime}>
-            {item.date} • {item.time}
-          </Text>
-        </View>
-        <View style={styles.itemRight}>
-          <Text style={styles.cost}>{formatCurrency(item.cost)}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          >
-            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+  const renderSwap = ({ item }: { item: SwapTransaction }) => {
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.title}>{item.stationName}</Text>
+            <Text style={styles.subTime}>
+              {item.swapDate.toLocaleDateString("vi-VN")} •{" "}
+              {item.swapDate.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+          <View style={styles.rightAlign}>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: statusColor(item.status) },
+              ]}
+            >
+              <Text style={styles.badgeText}>{statusText(item.status)}</Text>
+            </View>
           </View>
         </View>
-      </View>
-      <View style={styles.batteryInfo}>
-        <View style={styles.batteryChange}>
-          <Text style={styles.batteryFrom}>🔋 {item.batteryFrom}</Text>
-          <Text style={styles.arrow}>→</Text>
-          <Text style={styles.batteryTo}>🔋 {item.batteryTo}</Text>
+        <View style={styles.swapBatteriesRow}>
+          <View style={styles.iconWithText}>
+            <MaterialCommunityIcons
+              name="battery-outline"
+              size={18}
+              color="#374151"
+            />
+            <Text style={styles.batteryText}>
+              {item.oldBatteryId || "Pin cũ"}
+            </Text>
+          </View>
+          <MaterialCommunityIcons
+            name="arrow-right"
+            size={18}
+            color="#9ca3af"
+            style={styles.arrowIcon}
+          />
+          <View style={styles.iconWithText}>
+            <MaterialCommunityIcons
+              name="battery-high"
+              size={18}
+              color="#16a34a"
+            />
+            <Text style={styles.batteryText}>
+              {item.newBatteryId || "Pin mới"}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.inlineMeta}>
+          <Text style={styles.metaLabel}>Loại pin:</Text>
+          <Text style={styles.metaValue}>{item.batteryType}</Text>
+        </View>
+        <View style={styles.inlineMeta}>
+          <Text style={styles.metaLabel}>Thanh toán:</Text>
+          <Text style={styles.metaValue}>
+            {item.paymentMethod === "subscription"
+              ? "Gói đăng ký"
+              : "Trả theo lượt"}
+          </Text>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
-  const renderPaymentItem = ({ item }: { item: PaymentHistoryItem }) => (
-    <View style={styles.historyItem}>
-      <View style={styles.itemHeader}>
-        <View style={styles.itemInfo}>
-          <Text style={styles.paymentDescription}>{item.description}</Text>
-          <Text style={styles.dateTime}>
-            {item.date} • {item.time}
-          </Text>
-        </View>
-        <View style={styles.itemRight}>
-          <Text style={styles.cost}>{formatCurrency(item.amount)}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          >
-            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+  const renderPayment = ({ item }: { item: PaymentHistory }) => {
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.title}>{item.description}</Text>
+            <Text style={styles.subTime}>
+              {item.paymentDate.toLocaleDateString("vi-VN")} •{" "}
+              {item.paymentDate.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+          <View style={styles.rightAlign}>
+            <Text style={styles.amount}>{formatCurrency(item.amount)}</Text>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: statusColor(item.status) },
+              ]}
+            >
+              <Text style={styles.badgeText}>{statusText(item.status)}</Text>
+            </View>
           </View>
         </View>
+        <View style={styles.inlineMeta}>
+          <Text style={styles.metaLabel}>Loại:</Text>
+          <Text style={styles.metaValue}>
+            {item.type === "pay-per-swap"
+              ? "Đổi pin"
+              : item.type === "subscription"
+              ? "Gói"
+              : "Khác"}
+          </Text>
+        </View>
+        {item.invoiceId && (
+          <View style={styles.inlineMeta}>
+            <Text style={styles.metaLabel}>Hóa đơn:</Text>
+            <Text style={styles.metaValue}>{item.invoiceId}</Text>
+          </View>
+        )}
+        <View style={styles.inlineMeta}>
+          <Text style={styles.metaLabel}>Phương thức:</Text>
+          <Text style={styles.metaValue}>{item.paymentMethod}</Text>
+        </View>
       </View>
-      <View style={styles.paymentType}>
-        <Text style={styles.typeText}>
-          {item.type === "swap"
-            ? "💡 Đổi pin"
-            : item.type === "subscription"
-            ? "📋 Đăng ký"
-            : "💰 Nạp tiền"}
-        </Text>
+    );
+  };
+
+  const renderSubscription = ({ item }: { item: Subscription }) => {
+    const period = `${item.startDate.toLocaleDateString(
+      "vi-VN"
+    )} → ${item.endDate.toLocaleDateString("vi-VN")}`;
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.title}>{item.name}</Text>
+            <Text style={styles.subTime}>{period}</Text>
+          </View>
+          <View style={styles.rightAlign}>
+            <Text style={styles.amount}>{formatCurrency(item.price)}</Text>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: statusColor(item.status) },
+              ]}
+            >
+              <Text style={styles.badgeText}>{statusText(item.status)}</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.inlineMeta}>
+          <Text style={styles.metaLabel}>Loại:</Text>
+          <Text style={styles.metaValue}>
+            {item.type === "unlimited"
+              ? "Không giới hạn"
+              : `${item.swapLimit} lần`}
+          </Text>
+        </View>
+        <View style={styles.inlineMeta}>
+          <Text style={styles.metaLabel}>Thời hạn:</Text>
+          <Text style={styles.metaValue}>{item.duration} ngày</Text>
+        </View>
+        {item.remainingSwaps !== undefined && (
+          <View style={styles.inlineMeta}>
+            <Text style={styles.metaLabel}>Còn lại:</Text>
+            <Text style={styles.metaValue}>{item.remainingSwaps}</Text>
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
+
+  const tabDataMap: Record<TabKey, any[]> = {
+    swap: swapData,
+    payment: paymentData,
+    subscription: subscriptionData,
+  };
+  const renderMap: Record<TabKey, any> = {
+    swap: renderSwap,
+    payment: renderPayment,
+    subscription: renderSubscription,
+  };
+
+  const currentData = tabDataMap[tab];
+  const renderer = renderMap[tab];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Lịch sử</Text>
       </View>
-
-      {/* Tab Container */}
-      <View style={styles.tabContainer}>
+      <View style={styles.tabsRow}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "swap" && styles.activeTab]}
-          onPress={() => setActiveTab("swap")}
+          style={[styles.tabBtn, tab === "swap" && styles.tabActive]}
+          onPress={() => setTab("swap")}
+        >
+          <Text
+            style={[styles.tabText, tab === "swap" && styles.tabTextActive]}
+          >
+            Đổi pin ({swapData.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === "payment" && styles.tabActive]}
+          onPress={() => setTab("payment")}
+        >
+          <Text
+            style={[styles.tabText, tab === "payment" && styles.tabTextActive]}
+          >
+            Thanh toán ({paymentData.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === "subscription" && styles.tabActive]}
+          onPress={() => setTab("subscription")}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "swap" && styles.activeTabText,
+              tab === "subscription" && styles.tabTextActive,
             ]}
           >
-            🔋 Đổi pin
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "payment" && styles.activeTab]}
-          onPress={() => setActiveTab("payment")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "payment" && styles.activeTabText,
-            ]}
-          >
-            💳 Thanh toán
+            Gói ({subscriptionData.length})
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {activeTab === "swap" ? (
-          <FlatList
-            data={swapHistory}
-            renderItem={renderSwapItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-          />
-        ) : (
-          <FlatList
-            data={paymentHistory}
-            renderItem={renderPaymentItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-          />
-        )}
-      </View>
+      {currentData.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Chưa có dữ liệu</Text>
+          <Text style={styles.emptySubtitle}>
+            Hiện chưa phát sinh bản ghi nào cho mục này.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={currentData}
+          keyExtractor={(item: any) => item.id}
+          renderItem={renderer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -268,125 +330,145 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#b0d4b8",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: styleTokens.spacing.lg,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: styleTokens.spacing.lg,
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
   },
-  tabContainer: {
+  tabsRow: {
     flexDirection: "row",
-    backgroundColor: "#ffffff",
-    margin: 16,
-    borderRadius: 12,
+    backgroundColor: "#f1f5f9",
+    borderRadius: styleTokens.radius,
     padding: 4,
+    marginBottom: styleTokens.spacing.lg,
   },
-  tab: {
+  tabBtn: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    borderRadius: styleTokens.radius - 4,
     alignItems: "center",
-    borderRadius: 8,
   },
-  activeTab: {
+  tabActive: {
     backgroundColor: "#5D7B6F",
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#888888",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
   },
-  activeTabText: {
+  tabTextActive: {
     color: "#ffffff",
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 40,
+    paddingTop: 4,
   },
-  historyItem: {
+  card: {
     backgroundColor: "#ffffff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: styleTokens.radius,
+    padding: styleTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    marginBottom: styleTokens.spacing.lg,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 1,
   },
-  itemHeader: {
+  cardHeaderRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
+    marginBottom: styleTokens.spacing.sm,
   },
-  itemInfo: {
+  cardHeaderLeft: {
     flex: 1,
-    marginRight: 12,
+    paddingRight: 8,
   },
-  itemRight: {
+  title: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 2,
+  },
+  subTime: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+  rightAlign: {
     alignItems: "flex-end",
   },
-  stationName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000000",
+  amount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: styleTokens.colors.primary,
     marginBottom: 4,
   },
-  paymentDescription: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000000",
-    marginBottom: 4,
-  },
-  dateTime: {
-    fontSize: 12,
-    color: "#888888",
-  },
-  cost: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#5D7B6F",
-    marginBottom: 4,
-  },
-  statusBadge: {
+  badge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
   },
-  statusText: {
+  badgeText: {
     fontSize: 10,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#ffffff",
+    letterSpacing: 0.5,
   },
-  batteryInfo: {
-    marginTop: 8,
-  },
-  batteryChange: {
+  swapBatteriesRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    marginBottom: styleTokens.spacing.sm,
+    gap: 6,
   },
-  batteryFrom: {
-    fontSize: 14,
-    color: "#f59e0b",
+  iconWithText: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  arrow: {
-    fontSize: 16,
-    color: "#888888",
+  batteryText: {
+    fontSize: 13,
+    color: "#374151",
   },
-  batteryTo: {
-    fontSize: 14,
-    color: "#22c55e",
+  arrowIcon: {
+    marginHorizontal: 4,
   },
-  paymentType: {
-    marginTop: 8,
+  inlineMeta: {
+    flexDirection: "row",
+    marginBottom: 4,
   },
-  typeText: {
+  metaLabel: {
     fontSize: 12,
-    color: "#888888",
+    color: "#6b7280",
+    width: 90,
+  },
+  metaValue: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: styleTokens.spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 20,
   },
 });

@@ -1,85 +1,37 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../../../navigation/types";
+import AuthLayout from "../components/AuthLayout";
+import { ThemedButton, ThemedCard } from "../../../components";
+import { useTheme } from "../../../theme/ThemeProvider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Welcome">;
 
 export default function WelcomeScreen({ navigation }: Props) {
+  const theme = useTheme();
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Welcome to BSS</Text>
-        <Text style={styles.subtitle}>Your EV Battery Swapping Solution</Text>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.primaryButton}
+    <AuthLayout
+      title="Welcome to BSS"
+      subtitle="Your EV Battery Swapping Solution"
+    >
+      <ThemedCard>
+        <View style={{ gap: theme.spacing[4] }}>
+          <ThemedButton
+            title="Get Started"
             onPress={() => navigation.navigate("Login")}
-          >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.secondaryButton}
+            fullWidth
+          />
+          <ThemedButton
+            title="Create Account"
             onPress={() => navigation.navigate("Register")}
-          >
-            <Text style={styles.secondaryButtonText}>Create Account</Text>
-          </TouchableOpacity>
+            variant="secondary"
+            fullWidth
+          />
         </View>
-      </View>
-    </View>
+      </ThemedCard>
+    </AuthLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#007AFF",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 40,
-  },
-  buttonContainer: {
-    width: "100%",
-    gap: 12,
-  },
-  primaryButton: {
-    backgroundColor: "#007AFF",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    borderColor: "#007AFF",
-    borderWidth: 1,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#007AFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+const styles = StyleSheet.create({});

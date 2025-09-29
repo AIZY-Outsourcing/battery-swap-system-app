@@ -1,31 +1,34 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Dimensions,
-} from "react-native";
+import React, { useState, useMemo } from "react";
+import { View, Text, StyleSheet, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTheme } from "../../../theme/ThemeProvider";
 import { Input, ThemedButton, ThemedCard } from "../../../components";
-import { LinearGradient } from "expo-linear-gradient";
+// Layout
+import AuthLayout from "../components/AuthLayout";
 import { AuthStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
+import { useAuthStore } from "../../../store/authStore";
 import { track } from "../../../services/analytics";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
-
-const { height } = Dimensions.get("window");
 
 export default function LoginScreen({ navigation }: Props) {
   const theme = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Simple validators
+  const emailValid = useMemo(
+    () => /.+@.+\..+/.test(email) || /^\+?\d{9,15}$/.test(email),
+    [email]
+  );
+  const passwordValid = useMemo(() => password.length >= 6, [password]);
+  const formValid = emailValid && passwordValid;
+
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -50,16 +53,59 @@ export default function LoginScreen({ navigation }: Props) {
 
     setIsLoading(true);
     try {
-      const { token, user } = await AuthService.simpleLogin(email, password);
+      const res = await AuthService.login({ email, password });
+      if (!res.success) {
+        Alert.alert("Lỗi", res.error?.message || "Đăng nhập thất bại");
+        return;
+      }
+      const token = res.data?.token; // AuthService returns token (access_token)
+      const user = res.data?.user;
+
+      if (!token || !user) {
+        Alert.alert("Lỗi", "Lỗi đăng nhập - vui lòng thử lại");
+        return;
+      }
+
+      setAuth(token, user);
       track({ name: "login_success" });
 
-      Alert.alert("Thành công", `Chào mừng ${user.firstName}!`, [
-        {
-          text: "Tiếp tục",
-          onPress: () => {
-            // Navigate to vehicle setup
-            navigation.navigate("VehicleSetup", { userId: user.id });
+      // Check if email is verified from API response
+      if (!user.emailVerified) {
+        Alert.alert("Yêu cầu xác minh", "Vui lòng xác minh email trước.", [
+          {
+            text: "Xác minh",
+            onPress: () => navigation.replace("EmailVerification" as any),
           },
+        ]);
+        return;
+      }
+
+      // Check if user has completed vehicle setup
+      const hasVehicle = await AuthService.hasCompletedVehicleSetup();
+      if (!hasVehicle) {
+        Alert.alert(
+          "Thành công",
+          `Chào mừng ${user.firstName}! Hãy thiết lập phương tiện.`,
+          [
+            {
+              text: "Thiết lập xe",
+              onPress: () =>
+                navigation.navigate("VehicleSetup", { userId: user.id }),
+            },
+          ]
+        );
+        return;
+      }
+
+      // User is verified and has vehicle - go to main app
+      Alert.alert("Thành công", `Chào mừng trở lại ${user.firstName}!`, [
+        {
+          text: "Vào ứng dụng",
+          onPress: () =>
+            navigation.getParent()?.reset({
+              index: 0,
+              routes: [{ name: "AppStack" as any }],
+            }),
         },
       ]);
     } catch (error: any) {
@@ -74,52 +120,27 @@ export default function LoginScreen({ navigation }: Props) {
     navigation.navigate("VehicleSetup", { userId: "test-user-123" });
   };
 
-  const handlePhoneLogin = () => {
-    navigation.navigate("OTPVerification", {
-      phone: "+1234567890",
-      email: email || "test@example.com",
-    });
-  };
-
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <AuthLayout
+      title="BSS"
+      subtitle="Battery Swapping Station"
+      contentContainerStyle={{}}
     >
-      {/* Background Gradient */}
-      <LinearGradient
-        colors={[
-          theme.colors.primary,
-          theme.colors.primaryLight,
-          theme.colors.secondary,
-        ]}
-        style={styles.backgroundGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      <ThemedCard style={{ paddingVertical: theme.spacing[6] }}>
+        <Text
+          style={{
+            fontSize: theme.typography.fontSize["2xl"],
+            fontWeight: theme.typography.fontWeight.semibold as any,
+            textAlign: "center",
+            marginBottom: theme.spacing[6],
+            color: theme.colors.text.primary,
+          }}
+        >
+          Đăng nhập
+        </Text>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logo}>⚡</Text>
-          </View>
-          <Text style={styles.title}>Welcome to BSS</Text>
-          <Text style={styles.subtitle}>Battery Swapping Station</Text>
-        </View>
-
-        {/* Login Form Card */}
-        <ThemedCard style={styles.formCard}>
-          <Text
-            style={[styles.formTitle, { color: theme.colors.text.primary }]}
-          >
-            Đăng nhập
-          </Text>
-
-          <View style={styles.form}>
+        <View style={{ gap: theme.spacing[5] }}>
+          <View style={styles.fieldGroup}>
             <Input
               label="Email / Số điện thoại"
               placeholder="Nhập email hoặc số điện thoại"
@@ -127,215 +148,125 @@ export default function LoginScreen({ navigation }: Props) {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              style={{ marginBottom: theme.spacing[4] }}
+              error={
+                email.length > 0 && !emailValid
+                  ? "Email / SĐT không hợp lệ"
+                  : undefined
+              }
+              leftIcon={
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={
+                    email.length > 0 && !emailValid
+                      ? theme.colors.error
+                      : theme.colors.text.secondary
+                  }
+                />
+              }
             />
-
             <Input
               label="Mật khẩu"
               placeholder="Nhập mật khẩu"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
-              style={{ marginBottom: theme.spacing[6] }}
+              secureTextEntry={!showPassword}
+              error={
+                password.length > 0 && !passwordValid
+                  ? "Ít nhất 6 ký tự"
+                  : undefined
+              }
+              leftIcon={
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={theme.colors.text.secondary}
+                />
+              }
+              rightIcon={
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color={theme.colors.text.secondary}
+                />
+              }
+              onRightIconPress={() => setShowPassword((s) => !s)}
             />
-
+          </View>
+          <ThemedButton
+            title={isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+            onPress={handleLogin}
+            variant="primary"
+            fullWidth
+            disabled={isLoading || !formValid}
+          />
+          {__DEV__ && (
             <ThemedButton
-              title={isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
-              onPress={handleLogin}
-              variant="primary"
-              fullWidth
-              style={{ marginBottom: theme.spacing[4] }}
-              disabled={isLoading}
-            />
-
-            {/* Quick Test Login Button */}
-            <ThemedButton
-              title="🚀 Quick Login for Testing"
+              title="🚀 Quick Login (Dev)"
               onPress={handleQuickLogin}
               variant="secondary"
               fullWidth
+            />
+          )}
+          <View style={{ gap: theme.spacing[3] }}>
+            <Text
               style={{
-                marginBottom: theme.spacing[4],
-                backgroundColor: "#ff6b35",
+                textAlign: "center",
+                color: theme.colors.text.secondary,
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium as any,
               }}
-            />
-
-            <View style={styles.divider}>
-              <View
-                style={[
-                  styles.dividerLine,
-                  { backgroundColor: theme.colors.border.default },
-                ]}
+            >
+              Tuỳ chọn nhanh (sắp ra mắt)
+            </Text>
+            <View style={{ flexDirection: "row", gap: theme.spacing[3] }}>
+              <ThemedButton
+                title="👆 Vân tay"
+                variant="tertiary"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() =>
+                  Alert.alert("Thông tin", "Biometric login coming soon!")
+                }
               />
-              <Text
-                style={[
-                  styles.dividerText,
-                  { color: theme.colors.text.tertiary },
-                ]}
-              >
-                OR
-              </Text>
-              <View
-                style={[
-                  styles.dividerLine,
-                  { backgroundColor: theme.colors.border.default },
-                ]}
+              <ThemedButton
+                title="😀 Face ID"
+                variant="tertiary"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() =>
+                  Alert.alert("Thông tin", "Face ID login coming soon!")
+                }
               />
-            </View>
-
-            <ThemedButton
-              title="📱 Tiếp tục với số điện thoại"
-              onPress={handlePhoneLogin}
-              variant="secondary"
-              fullWidth
-              style={{ marginBottom: theme.spacing[6] }}
-            />
-
-            {/* Quick Login Options */}
-            <View style={styles.quickLogin}>
-              <Text
-                style={[
-                  styles.quickLoginText,
-                  { color: theme.colors.text.secondary },
-                ]}
-              >
-                Quick Login
-              </Text>
-              <View style={styles.quickLoginButtons}>
-                <ThemedButton
-                  title="👆 Fingerprint"
-                  variant="tertiary"
-                  size="sm"
-                  style={{ flex: 1, marginRight: theme.spacing[2] }}
-                  onPress={() =>
-                    Alert.alert("Info", "Biometric login coming soon!")
-                  }
-                />
-                <ThemedButton
-                  title="😀 Face ID"
-                  variant="tertiary"
-                  size="sm"
-                  style={{ flex: 1 }}
-                  onPress={() =>
-                    Alert.alert("Info", "Face ID login coming soon!")
-                  }
-                />
-              </View>
             </View>
           </View>
-        </ThemedCard>
-
-        {/* Footer */}
-        <View style={styles.footer}>
           <ThemedButton
             title="Chưa có tài khoản? Đăng ký"
             onPress={() => navigation.navigate("Register")}
             variant="tertiary"
-            style={{ marginBottom: theme.spacing[2] }}
+            fullWidth
           />
-
           <Text
-            style={[styles.versionText, { color: theme.colors.text.tertiary }]}
+            style={{
+              textAlign: "center",
+              fontSize: theme.typography.fontSize.xs,
+              color: theme.colors.text.tertiary,
+              marginTop: theme.spacing[2],
+            }}
           >
             BSS v1.0.0
           </Text>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </ThemedCard>
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  fieldGroup: {
+    gap: 12,
   },
-  backgroundGradient: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    height: height * 0.5,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: "center",
-    paddingTop: 80,
-    paddingBottom: 40,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  logo: {
-    fontSize: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-    fontWeight: "500",
-  },
-  formCard: {
-    marginBottom: 30,
-    paddingVertical: 30,
-    paddingHorizontal: 24,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 30,
-  },
-  form: {
-    width: "100%",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    paddingHorizontal: 16,
+  icon: {
     fontSize: 14,
-    fontWeight: "500",
-  },
-  quickLogin: {
-    alignItems: "center",
-  },
-  quickLoginText: {
-    fontSize: 14,
-    marginBottom: 12,
-    fontWeight: "500",
-  },
-  quickLoginButtons: {
-    flexDirection: "row",
-    width: "100%",
-  },
-  footer: {
-    alignItems: "center",
-    paddingBottom: 30,
-  },
-  versionText: {
-    fontSize: 12,
-    textAlign: "center",
   },
 });

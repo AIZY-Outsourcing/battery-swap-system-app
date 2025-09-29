@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Alert,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -14,7 +13,10 @@ import { vehicleModels } from "../../../data/mockData";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { RootStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import VehicleService from "../../../services/api/VehicleService";
+import AuthLayout from "../components/AuthLayout";
+import { ThemedButton, ThemedCard } from "../../../components";
+import { useTheme } from "../../../theme/ThemeProvider";
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<AuthStackParamList, "VehicleSetup">,
@@ -22,6 +24,7 @@ type Props = CompositeScreenProps<
 >;
 
 export default function VehicleSetupScreen({ navigation, route }: Props) {
+  const theme = useTheme();
   const [vehicleModel, setVehicleModel] = useState("");
   const [yearOfManufacture, setYearOfManufacture] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
@@ -52,46 +55,52 @@ export default function VehicleSetupScreen({ navigation, route }: Props) {
     setLoading(true);
 
     try {
-      // Ensure user exists in AsyncStorage (for dev/test)
+      // Verify user is logged in
       const userData = await AuthService.getCurrentUser();
       if (!userData) {
-        const mockUser = {
-          id: "test-user",
-          firstName: "Test",
-          lastName: "User",
-          email: "test@bss.com",
-          phone: "0123456789",
-          createdAt: new Date().toISOString(),
-          membershipLevel: "bronze",
-        };
-        await AuthService.clearAuth();
-        await AsyncStorage.setItem(
-          (AuthService as any).constructor.USER_KEY,
-          JSON.stringify(mockUser)
-        );
+        Alert.alert("Lỗi", "Vui lòng đăng nhập lại", [
+          { text: "Đăng nhập", onPress: () => navigation.replace("Login") },
+        ]);
+        return;
       }
 
       // Get battery type from selected model
       const selectedModel = vehicleModels.find((m) => m.model === vehicleModel);
-      const batteryType = selectedModel?.batteryType || "A";
+      const batteryTypeCode = selectedModel?.batteryType || "A";
 
-      // Save vehicle info to AuthService
-      await AuthService.saveVehicleInfo({
-        make: vehicleModel.split(" ")[0] || "EV",
-        model: vehicleModel,
-        year: yearOfManufacture || "2023",
-        licensePlate: licensePlate,
-        batteryType: batteryType,
+      // For now, map battery code to UUID - in real app this should come from a battery types API
+      const batteryTypeIdMap: Record<string, string> = {
+        A: "550e8400-e29b-41d4-a716-446655440001",
+        B: "550e8400-e29b-41d4-a716-446655440002",
+        C: "550e8400-e29b-41d4-a716-446655440003",
+      };
+      const batteryTypeId =
+        batteryTypeIdMap[batteryTypeCode] || batteryTypeIdMap["A"];
+
+      // Call real API create vehicle
+      const createRes = await VehicleService.createVehicleAndStore({
+        name: vehicleModel,
+        vin,
+        plate_number: licensePlate,
+        manufacturer_year:
+          yearOfManufacture || new Date().getFullYear().toString(),
+        battery_type_id: batteryTypeId,
       });
+      if (!createRes.success) {
+        Alert.alert(
+          "Lỗi",
+          createRes.error?.message || "Không thể tạo phương tiện"
+        );
+        return;
+      }
 
       Alert.alert(
         "Thành công",
-        `Đã liên kết thành công xe ${vehicleModel}!\nLoại pin: ${batteryType}`,
+        `Đã đăng ký xe ${vehicleModel}!\nLoại pin: ${batteryTypeCode}`,
         [
           {
             text: "Hoàn thành & Vào App",
             onPress: () => {
-              // Reset root sang AppStack (AppStack tự điều hướng vào MainTabs)
               navigation.getParent()?.reset({
                 index: 0,
                 routes: [{ name: "AppStack" } as any],
@@ -108,279 +117,197 @@ export default function VehicleSetupScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+    <AuthLayout
+      title="Liên kết thông tin xe"
+      subtitle="Nhập thông tin để xác định loại pin phù hợp"
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Liên kết thông tin xe</Text>
-        <Text style={styles.subtitle}>
-          Vui lòng nhập thông tin xe để hệ thống xác định loại pin phù hợp
-        </Text>
-
-        {/* Quick Test Button */}
-        <TouchableOpacity style={styles.testButton} onPress={fillTestData}>
-          <Text style={styles.testButtonText}>
-            🚗 Điền dữ liệu test (VinFast VF8)
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.form}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            Model xe <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={styles.modelSelector}>
-            {vehicleModels.map((model) => (
-              <TouchableOpacity
-                key={model.model}
-                style={[
-                  styles.modelOption,
-                  vehicleModel === model.model && styles.selectedModel,
-                ]}
-                onPress={() => setVehicleModel(model.model)}
-              >
-                <Text
-                  style={[
-                    styles.modelText,
-                    vehicleModel === model.model && styles.selectedModelText,
-                  ]}
-                >
-                  {model.model} (Pin {model.batteryType})
-                </Text>
-              </TouchableOpacity>
-            ))}
+      <ThemedCard>
+        <View style={{ gap: theme.spacing[5] }}>
+          {__DEV__ && (
+            <ThemedButton
+              title="🚗 Điền dữ liệu test (VF8)"
+              onPress={fillTestData}
+              variant="secondary"
+              fullWidth
+            />
+          )}
+          <View style={{ gap: theme.spacing[3] }}>
+            <Text
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium as any,
+                color: theme.colors.text.primary,
+              }}
+            >
+              Model xe <Text style={{ color: theme.colors.error }}>*</Text>
+            </Text>
+            <View style={{ gap: theme.spacing[2] }}>
+              {vehicleModels.map((model) => {
+                const selected = vehicleModel === model.model;
+                return (
+                  <TouchableOpacity
+                    key={model.model}
+                    style={[
+                      styles.modelOption,
+                      {
+                        borderColor: selected
+                          ? theme.colors.border.focused
+                          : theme.colors.border.default,
+                        backgroundColor: selected
+                          ? theme.colors.surface.elevated
+                          : theme.colors.surface.default,
+                        padding: theme.spacing[3],
+                        borderRadius: theme.borderRadius.base,
+                        borderWidth: 1,
+                      },
+                    ]}
+                    onPress={() => setVehicleModel(model.model)}
+                  >
+                    <Text
+                      style={{
+                        color: selected
+                          ? theme.colors.primary
+                          : theme.colors.text.primary,
+                        fontWeight: selected
+                          ? (theme.typography.fontWeight.semibold as any)
+                          : (theme.typography.fontWeight.normal as any),
+                      }}
+                    >
+                      {model.model} (Pin {model.batteryType})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Năm sản xuất</Text>
-          <TextInput
-            style={styles.input}
-            value={yearOfManufacture}
-            onChangeText={setYearOfManufacture}
-            placeholder="VD: 2023"
-            keyboardType="numeric"
-            maxLength={4}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            Biển số xe <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={licensePlate}
-            onChangeText={setLicensePlate}
-            placeholder="VD: 30A-12345"
-            autoCapitalize="characters"
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            VIN (Vehicle Identification Number){" "}
-            <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={vin}
-            onChangeText={setVin}
-            placeholder="Nhập mã VIN của xe"
-            autoCapitalize="characters"
-            maxLength={17}
-          />
-          <Text style={styles.helperText}>
-            VIN là mã định danh duy nhất của xe, thường có 17 ký tự
-          </Text>
-        </View>
-
-        {vehicleModel && (
-          <View style={styles.batteryInfo}>
-            <Text style={styles.batteryInfoTitle}>Thông tin pin:</Text>
-            <Text style={styles.batteryInfoText}>
-              Xe {vehicleModel} sử dụng pin loại{" "}
-              <Text style={styles.batteryType}>
+          <View style={{ gap: theme.spacing[2] }}>
+            <Text style={{ color: theme.colors.text.primary }}>
+              Năm sản xuất
+            </Text>
+            <TextInput
+              style={[
+                styles.textInput,
                 {
-                  vehicleModels.find((m) => m.model === vehicleModel)
-                    ?.batteryType
-                }
-              </Text>
+                  borderColor: theme.colors.border.default,
+                  backgroundColor: theme.colors.surface.default,
+                  color: theme.colors.text.primary,
+                },
+              ]}
+              value={yearOfManufacture}
+              onChangeText={setYearOfManufacture}
+              placeholder="VD: 2023"
+              keyboardType="numeric"
+              maxLength={4}
+              placeholderTextColor={theme.colors.text.tertiary}
+            />
+          </View>
+          <View style={{ gap: theme.spacing[2] }}>
+            <Text style={{ color: theme.colors.text.primary }}>
+              Biển số xe <Text style={{ color: theme.colors.error }}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  borderColor: theme.colors.border.default,
+                  backgroundColor: theme.colors.surface.default,
+                  color: theme.colors.text.primary,
+                },
+              ]}
+              value={licensePlate}
+              onChangeText={setLicensePlate}
+              placeholder="VD: 30A-12345"
+              autoCapitalize="characters"
+              placeholderTextColor={theme.colors.text.tertiary}
+            />
+          </View>
+          <View style={{ gap: theme.spacing[2] }}>
+            <Text style={{ color: theme.colors.text.primary }}>
+              VIN <Text style={{ color: theme.colors.error }}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  borderColor: theme.colors.border.default,
+                  backgroundColor: theme.colors.surface.default,
+                  color: theme.colors.text.primary,
+                },
+              ]}
+              value={vin}
+              onChangeText={setVin}
+              placeholder="Nhập mã VIN của xe"
+              autoCapitalize="characters"
+              maxLength={17}
+              placeholderTextColor={theme.colors.text.tertiary}
+            />
+            <Text
+              style={{
+                fontSize: theme.typography.fontSize.xs,
+                color: theme.colors.text.secondary,
+              }}
+            >
+              VIN là mã định danh duy nhất của xe (thường 17 ký tự)
             </Text>
           </View>
-        )}
-      </View>
-
-      <TouchableOpacity
-        style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        <Text style={styles.submitButtonText}>
-          {loading ? "Đang xử lý..." : "Hoàn tất đăng ký"}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.skipButton}
-        onPress={() => {
-          // Bỏ qua: reset Root sang AppStack/MainTabs
-          navigation
-            .getParent()
-            ?.reset({ index: 0, routes: [{ name: "AppStack" } as any] });
-        }}
-      >
-        <Text style={styles.skipButtonText}>Bỏ qua (vào trang chính)</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          {vehicleModel && (
+            <View
+              style={{
+                backgroundColor: theme.colors.accent,
+                padding: theme.spacing[4],
+                borderRadius: theme.borderRadius.base,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.medium as any,
+                  marginBottom: theme.spacing[1],
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Thông tin pin
+              </Text>
+              <Text style={{ color: theme.colors.text.secondary }}>
+                Xe {vehicleModel} sử dụng pin loại{" "}
+                <Text style={{ fontWeight: "700" }}>
+                  {
+                    vehicleModels.find((m) => m.model === vehicleModel)
+                      ?.batteryType
+                  }
+                </Text>
+              </Text>
+            </View>
+          )}
+          <ThemedButton
+            title={loading ? "Đang xử lý..." : "Hoàn tất đăng ký"}
+            onPress={handleSubmit}
+            disabled={loading}
+            fullWidth
+          />
+          <ThemedButton
+            title="Bỏ qua (vào trang chính)"
+            onPress={() => {
+              navigation
+                .getParent()
+                ?.reset({ index: 0, routes: [{ name: "AppStack" } as any] });
+            }}
+            variant="tertiary"
+            fullWidth
+          />
+        </View>
+      </ThemedCard>
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  contentContainer: {
-    flexGrow: 1,
-    padding: 20,
-  },
-  header: {
-    marginBottom: 30,
-    marginTop: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  form: {
-    flex: 1,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 8,
-  },
-  required: {
-    color: "#FF4444",
-  },
-  input: {
+  textInput: {
     borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: 8,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: "white",
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    backgroundColor: "white",
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-  },
-  modelSelector: {
-    gap: 10,
-  },
-  modelOption: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: "white",
-  },
-  selectedModel: {
-    borderColor: "#007AFF",
-    backgroundColor: "#E3F2FD",
-  },
-  modelText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  selectedModelText: {
-    color: "#007AFF",
-    fontWeight: "500",
-  },
-  helperText: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 5,
-    fontStyle: "italic",
-  },
-  batteryInfo: {
-    backgroundColor: "#E3F2FD",
-    padding: 15,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  batteryInfoTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1976D2",
-    marginBottom: 5,
-  },
-  batteryInfoText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  batteryType: {
-    fontWeight: "bold",
-    color: "#1976D2",
-  },
-  submitButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  submitButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  submitButtonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  skipButton: {
-    paddingVertical: 15,
-  },
-  skipButtonText: {
-    color: "#666",
-    fontSize: 16,
-    textAlign: "center",
-    textDecorationLine: "underline",
-  },
-  testButton: {
-    backgroundColor: "#ff6b35",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 15,
-    alignItems: "center",
-  },
-  testButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  modelOption: {},
 });

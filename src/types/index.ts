@@ -7,6 +7,8 @@ export interface User {
   phone: string;
   createdAt: string;
   membershipLevel: "bronze" | "silver" | "gold" | "platinum";
+  emailVerified?: boolean;
+  role?: string;
   vehicles?: Array<{
     id?: string;
     make?: string;

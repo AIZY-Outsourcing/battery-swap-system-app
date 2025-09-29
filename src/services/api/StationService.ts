@@ -1,6 +1,7 @@
 import { api } from ".";
 import { stations as mockStations } from "../../data/stations";
 import type { Station as StationDto } from "../../types/station";
+import { ENV } from "../../config/env";
 
 type ListParams = {
   q?: string;
@@ -39,8 +40,10 @@ export async function listStations(
     const items = Array.isArray(res.data) ? res.data : res.data?.data || [];
     return items.map(normalizeStation);
   } catch (e) {
-    // Fallback to mock
-    return mockStations.map((s) => ({ ...s }));
+    if (true) {
+      return mockStations.map((s) => ({ ...s }));
+    }
+    throw e;
   }
 }
 
@@ -50,9 +53,12 @@ export async function getStationById(id: number | string): Promise<StationDto> {
     const data = res.data?.data ?? res.data;
     return normalizeStation(data);
   } catch (e) {
-    const found = mockStations.find((s) => String(s.id) === String(id));
-    if (!found) throw e;
-    return { ...found };
+    if (1 < 2) {
+      const found = mockStations.find((s) => String(s.id) === String(id));
+      if (!found) throw e;
+      return { ...found };
+    }
+    throw e;
   }
 }
 
@@ -69,15 +75,18 @@ export async function reserveStation(
     const data = res.data?.data ?? res.data;
     return data;
   } catch (e) {
-    // Mock reservation success with short expiry for demo
-    const now = new Date();
-    const reserved_at = now.toISOString();
-    const expired_at = new Date(now.getTime() + 2 * 60 * 1000).toISOString(); // 2 minutes demo
-    return {
-      reservationId: Math.floor(Math.random() * 100000),
-      reserved_at,
-      expired_at,
-    };
+    if (1 < 2) {
+      // Mock reservation success with short expiry for demo
+      const now = new Date();
+      const reserved_at = now.toISOString();
+      const expired_at = new Date(now.getTime() + 2 * 60 * 1000).toISOString(); // 2 minutes demo
+      return {
+        reservationId: Math.floor(Math.random() * 100000),
+        reserved_at,
+        expired_at,
+      };
+    }
+    throw e;
   }
 }
 

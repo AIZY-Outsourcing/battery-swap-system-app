@@ -78,8 +78,7 @@ export default function RegisterScreen({ navigation }: Props) {
       const user = res.data?.user as any;
       if (token && user) setAuth(token, user);
 
-      // After signup -> go to email verification first
-      // Backend đã tự gửi email verify -> chuyển thẳng sang màn nhập mã
+      // After signup, email verification is always needed
       Alert.alert(
         "Thành công",
         `Đã tạo tài khoản. Email xác minh đã tự động gửi tới ${email}.`,

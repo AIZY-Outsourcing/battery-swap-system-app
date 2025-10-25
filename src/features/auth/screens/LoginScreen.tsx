@@ -69,6 +69,10 @@ export default function LoginScreen({ navigation }: Props) {
       setAuth(token, user);
       track({ name: "login_success" });
 
+      // Check flags from backend response
+      const needsPinSetup = (res.data as any)?.needsPinSetup ?? false;
+      const needsVehicleSetup = (res.data as any)?.needsVehicleSetup ?? false;
+
       // Check if email is verified from API response
       if (!user.emailVerified) {
         Alert.alert("Yêu cầu xác minh", "Vui lòng xác minh email trước.", [
@@ -80,24 +84,33 @@ export default function LoginScreen({ navigation }: Props) {
         return;
       }
 
-      // Check if user has completed vehicle setup
-      const hasVehicle = await AuthService.hasCompletedVehicleSetup();
-      if (!hasVehicle) {
+      // Check if PIN setup is needed
+      if (needsPinSetup) {
+        Alert.alert("Tạo mã PIN", "Vui lòng tạo mã PIN 6 số để bảo mật.", [
+          {
+            text: "Tạo PIN",
+            onPress: () => navigation.replace("PinSetup"),
+          },
+        ]);
+        return;
+      }
+
+      // Check if vehicle setup is needed
+      if (needsVehicleSetup) {
         Alert.alert(
           "Thành công",
           `Chào mừng ${user.firstName}! Hãy thiết lập phương tiện.`,
           [
             {
               text: "Thiết lập xe",
-              onPress: () =>
-                navigation.navigate("VehicleSetup", { userId: user.id }),
+              onPress: () => navigation.replace("VehicleSetup"),
             },
           ]
         );
         return;
       }
 
-      // User is verified and has vehicle - go to main app
+      // User is verified, has PIN, and has vehicle - go to main app
       Alert.alert("Thành công", `Chào mừng trở lại ${user.firstName}!`, [
         {
           text: "Vào ứng dụng",

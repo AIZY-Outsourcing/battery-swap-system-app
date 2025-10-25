@@ -12,6 +12,11 @@ import {
 
 class AuthService {
   private baseUrl: string = "/auth"; // base without version (ENV adds version already)
+  // Debug flag aligns with API client logging behavior
+  private static DEBUG: boolean =
+    String(process.env.EXPO_PUBLIC_DEBUG_API_LOGS).toLowerCase() === "true" ||
+    (typeof __DEV__ !== "undefined" && __DEV__) ||
+    process.env.NODE_ENV !== "production";
 
   async login(
     credentials: LoginForm
@@ -22,10 +27,23 @@ class AuthService {
         emailOrPhone: credentials.email, // LoginForm.email can be email or phone
         password: credentials.password,
       };
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/login`, {
+          emailOrPhone: payload.emailOrPhone,
+          password: "***",
+        });
+      }
       const res = await api.post(`${this.baseUrl}/login`, payload);
-      const data: any = res.data.data.data;
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇠ POST", `${this.baseUrl}/login`, "→", res.status);
+      }
+      const body: any = res.data;
+      const root: any = body?.data?.data ?? body?.data ?? body;
 
-      const apiUser: any = data.user || {};
+      const apiUser: any =
+        root?.user || root?.profile || root?.account || root?.data?.user || {};
 
       // Map API user -> local User shape
       const splitName = (apiUser.name || "").trim().split(/\s+/);
@@ -41,17 +59,48 @@ class AuthService {
         role: apiUser.role || "user",
       } as User;
 
-      const access = data.tokens?.access_token;
-      const refresh = data.tokens?.refresh_token;
+      const tokens: any = root?.tokens || root?.data?.tokens || {};
+      const access = tokens?.access_token || root?.access_token || root?.token;
+      const refresh = tokens?.refresh_token || root?.refresh_token;
       if (access) await setSecureToken(access);
       if (refresh) await setRefreshToken(refresh);
 
+      // Attach vehicle if returned by backend
+      const vehicle = root?.vehicle ?? null;
+      if (vehicle) {
+        // add vehicle to local user shape if backend provided
+        try {
+          (user as any).vehicle = vehicle;
+        } catch {}
+      }
+
       await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
 
-      return { success: true, data: { token: access, user } };
+      // Determine if PIN (2FA) setup or vehicle setup is required
+      const is2faEnabled =
+        apiUser.is_2fa_enabled ?? root?.requires_2fa ?? false;
+      const needsPinSetup = is2faEnabled === false;
+      const needsVehicleSetup = vehicle == null;
+
+      return {
+        success: true,
+        data: { token: access, user, needsPinSetup, needsVehicleSetup },
+      } as any;
     } catch (error: any) {
       const status = error?.response?.status;
       const message = error?.response?.data?.message || "Invalid credentials";
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ✖ POST",
+          `${this.baseUrl}/login`,
+          status || "NETWORK",
+          {
+            message,
+            response: error?.response?.data,
+          }
+        );
+      }
       return {
         success: false,
         error: {
@@ -77,9 +126,24 @@ class AuthService {
         phone: userData.phone,
         password: userData.password,
       };
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/signup`, {
+          name: payload.name,
+          email: payload.email,
+          phone: payload.phone,
+          password: "***",
+        });
+      }
       const res = await api.post(`${this.baseUrl}/signup`, payload);
-      const data: any = res.data?.data || res.data;
-      const apiUser: any = data.user || data.profile || data.account || {};
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇠ POST", `${this.baseUrl}/signup`, "→", res.status);
+      }
+      const body: any = res.data;
+      const root: any = body?.data?.data ?? body?.data ?? body;
+      const apiUser: any =
+        root?.user || root?.profile || root?.account || root?.data?.user || {};
       // Map API user (id, email, name) -> local User shape
       const splitName = (apiUser.name || name || "").trim().split(/\s+/);
       const firstName =
@@ -99,9 +163,9 @@ class AuthService {
         emailVerified: apiUser.is_verified || false,
         role: apiUser.role || "user",
       } as User;
-      const access =
-        data.tokens?.access_token || data.access_token || data.token;
-      const refresh = data.tokens?.refresh_token || data.refresh_token;
+      const tokens: any = root?.tokens || root?.data?.tokens || {};
+      const access = tokens?.access_token || root?.access_token || root?.token;
+      const refresh = tokens?.refresh_token || root?.refresh_token;
       if (access) await setSecureToken(access);
       if (refresh) await setRefreshToken(refresh);
       if (user)
@@ -115,7 +179,7 @@ class AuthService {
       const validationMsg = Array.isArray(respData?.errors)
         ? respData.errors.map((e: any) => e.message || e).join("; ")
         : undefined;
-      if (__DEV__) {
+      if (AuthService.DEBUG) {
         // eslint-disable-next-line no-console
         console.log("[AuthService.register] failure", {
           status,
@@ -141,7 +205,15 @@ class AuthService {
     try {
       // Attempt server-side logout (best-effort; ignore failure)
       try {
+        if (AuthService.DEBUG) {
+          // eslint-disable-next-line no-console
+          console.log("[auth] ⇢ POST", `${this.baseUrl}/logout`);
+        }
         await api.post(`${this.baseUrl}/logout`);
+        if (AuthService.DEBUG) {
+          // eslint-disable-next-line no-console
+          console.log("[auth] ⇠ POST", `${this.baseUrl}/logout`, "→ ok");
+        }
       } catch {}
       await clearSecureToken();
       await clearRefreshToken();
@@ -160,9 +232,24 @@ class AuthService {
 
   async refreshToken(token: string): Promise<ApiResponse<{ token: string }>> {
     try {
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/refresh`, {
+          refresh_token: "***",
+        });
+      }
       const res = await api.post(`${this.baseUrl}/refresh`, {
         refresh_token: token,
       });
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ⇠ POST",
+          `${this.baseUrl}/refresh`,
+          "→",
+          res.status
+        );
+      }
       const data = res.data?.data || res.data;
       const newAccess = data.access_token;
       const newRefresh = data.refresh_token;
@@ -244,7 +331,15 @@ class AuthService {
 
   async getMe(): Promise<User | null> {
     try {
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ GET", `${this.baseUrl}/profile`);
+      }
       const res = await api.get(`${this.baseUrl}/profile`);
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇠ GET", `${this.baseUrl}/profile`, "→", res.status);
+      }
       const data = res.data?.data || res.data;
 
       // Map API user -> local User shape
@@ -266,6 +361,14 @@ class AuthService {
     } catch (err: any) {
       // If unauthorized, clear token
       const status = err?.response?.status;
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ✖ GET",
+          `${this.baseUrl}/profile`,
+          status || "NETWORK"
+        );
+      }
       if (status === 401) {
         await this.clearAuth();
       }
@@ -282,7 +385,18 @@ class AuthService {
     token: string
   ): Promise<ApiResponse<{ verified: boolean }>> {
     try {
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/verify-email`, {
+          email,
+          token: "***",
+        });
+      }
       await api.post(`${this.baseUrl}/verify-email`, { email, token });
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇠ POST", `${this.baseUrl}/verify-email`, "→ ok");
+      }
       // Optionally we could mark user as verified in local store if user object exists
       const userData = await AsyncStorage.getItem(AuthService.USER_KEY);
       if (userData) {
@@ -298,6 +412,14 @@ class AuthService {
       }
       return { success: true, data: { verified: true } };
     } catch (error: any) {
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ✖ POST",
+          `${this.baseUrl}/verify-email`,
+          error?.response?.status || "NETWORK"
+        );
+      }
       return {
         success: false,
         error: {
@@ -319,10 +441,26 @@ class AuthService {
   async resendEmailOtp(): Promise<ApiResponse<{ sent: boolean }>> {
     try {
       // Backend derives email from access token; no body needed
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/resend-otp`);
+      }
       await api.post(`${this.baseUrl}/resend-otp`);
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇠ POST", `${this.baseUrl}/resend-otp`, "→ ok");
+      }
       return { success: true, data: { sent: true } };
     } catch (error: any) {
       const status = error?.response?.status;
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ✖ POST",
+          `${this.baseUrl}/resend-otp`,
+          status || "NETWORK"
+        );
+      }
       return {
         success: false,
         error: {
@@ -330,6 +468,61 @@ class AuthService {
           message:
             error?.response?.data?.message ||
             "Failed to resend verification token",
+        },
+      };
+    }
+  }
+
+  /**
+   * Setup 2FA with 6-digit PIN
+   * POST /auth/setup-2fa { pin: "123456" }
+   */
+  async setup2FA(pin: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/setup-2fa`, {
+          pin: "***",
+        });
+      }
+      const res = await api.post(`${this.baseUrl}/setup-2fa`, { pin });
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ⇠ POST",
+          `${this.baseUrl}/setup-2fa`,
+          "→",
+          res.status
+        );
+      }
+      // Mark user as 2FA enabled locally
+      const userData = await AsyncStorage.getItem(AuthService.USER_KEY);
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          (user as any).is_2fa_enabled = true;
+          await AsyncStorage.setItem(
+            AuthService.USER_KEY,
+            JSON.stringify(user)
+          );
+        } catch {}
+      }
+      return { success: true, data: { success: true } };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[auth] ✖ POST",
+          `${this.baseUrl}/setup-2fa`,
+          status || "NETWORK"
+        );
+      }
+      return {
+        success: false,
+        error: {
+          code: status === 409 ? "ALREADY_ENABLED" : "SETUP_2FA_FAILED",
+          message: error?.response?.data?.message || "Failed to setup 2FA",
         },
       };
     }

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from ".";
+import api from "./index";
 import { ApiResponse, User } from "../../types";
 
 // Backend vehicle raw shape (based on spec)
@@ -26,7 +26,12 @@ export interface CreateVehiclePayload {
   manufacturer_year: string;
   user_id?: string; // optional, derive from stored user if absent
   battery_type_id: string;
+  vehicle_model_id: string;
 }
+
+// Options response types
+export type VehicleModelOptions = Record<string, string>;
+export type BatteryTypeOptions = Record<string, string>;
 
 // Normalized internal vehicle shape (aligned with existing Vehicle concept but minimal)
 export interface VehicleRecord {
@@ -71,18 +76,22 @@ export async function createVehicle(
   payload: CreateVehiclePayload
 ): Promise<ApiResponse<VehicleRecord>> {
   try {
-    const userId = await resolveUserId(payload.user_id);
-    if (!userId) {
-      return {
-        success: false,
-        error: {
-          code: "NO_USER_ID",
-          message: "User id missing (login required)",
-        },
-      };
+    // Backend auto-derives user_id from token, so don't send it
+    const { ...body } = payload;
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.createVehicle] calling POST /vehicles with:",
+        body
+      );
     }
-    const body = { ...payload, user_id: userId };
+
     const res = await api.post("/vehicles", body);
+
+    if (__DEV__) {
+      console.log("[VehicleService.createVehicle] success response:", res.data);
+    }
+
     // API returns vehicle directly in response (not nested in data wrapper)
     const data: BackendVehicle = res.data as BackendVehicle;
     return { success: true, data: normalize(data) };
@@ -97,6 +106,10 @@ export async function createVehicle(
         status,
         respData,
         originalPayload: payload,
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        isNetworkError:
+          error?.message?.includes("Network") || error?.code === "ECONNREFUSED",
       });
     }
 
@@ -134,7 +147,113 @@ export async function createVehicleAndStore(
   return result;
 }
 
+/**
+ * Fetch vehicle model options for dropdown
+ * GET /vehicle-models/options
+ */
+export async function getVehicleModelOptions(): Promise<
+  ApiResponse<VehicleModelOptions>
+> {
+  try {
+    const res = await api.get("/vehicle-models/options");
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.getVehicleModelOptions] raw response:",
+        JSON.stringify(res.data, null, 2)
+      );
+    }
+
+    // Handle nested response structure like {data: {success, data: {...}}}
+    const body = res.data?.data?.data ?? res.data?.data ?? res.data;
+    const data: VehicleModelOptions = body || {};
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.getVehicleModelOptions] parsed options:",
+        Object.keys(data).length,
+        "items"
+      );
+      console.log(
+        "[VehicleService.getVehicleModelOptions] options detail:",
+        JSON.stringify(data, null, 2)
+      );
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const respData = error?.response?.data;
+    const message =
+      respData?.message || respData?.error || "Failed to fetch vehicle models";
+    if (__DEV__) {
+      console.log("[VehicleService.getVehicleModelOptions] failure", {
+        status,
+        respData,
+      });
+    }
+    return {
+      success: false,
+      error: { code: "FETCH_MODELS_FAILED", message },
+    };
+  }
+}
+
+/**
+ * Fetch battery type options for dropdown
+ * GET /battery-types/options
+ */
+export async function getBatteryTypeOptions(): Promise<
+  ApiResponse<BatteryTypeOptions>
+> {
+  try {
+    const res = await api.get("/battery-types/options");
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.getBatteryTypeOptions] raw response:",
+        JSON.stringify(res.data, null, 2)
+      );
+    }
+
+    // Handle nested response structure like {data: {success, data: {...}}}
+    const body = res.data?.data?.data ?? res.data?.data ?? res.data;
+    const data: BatteryTypeOptions = body || {};
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.getBatteryTypeOptions] parsed options:",
+        Object.keys(data).length,
+        "items"
+      );
+      console.log(
+        "[VehicleService.getBatteryTypeOptions] options detail:",
+        JSON.stringify(data, null, 2)
+      );
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const respData = error?.response?.data;
+    const message =
+      respData?.message || respData?.error || "Failed to fetch battery types";
+    if (__DEV__) {
+      console.log("[VehicleService.getBatteryTypeOptions] failure", {
+        status,
+        respData,
+      });
+    }
+    return {
+      success: false,
+      error: { code: "FETCH_BATTERY_TYPES_FAILED", message },
+    };
+  }
+}
+
 export default {
   createVehicle,
   createVehicleAndStore,
+  getVehicleModelOptions,
+  getBatteryTypeOptions,
 };

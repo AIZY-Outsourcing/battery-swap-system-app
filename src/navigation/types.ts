@@ -47,7 +47,8 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   EmailVerification: undefined;
-  VehicleSetup: { userId: string };
+  PinSetup: undefined;
+  VehicleSetup: { userId?: string } | undefined;
 };
 
 export type MainTabParamList = {

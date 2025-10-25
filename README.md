@@ -192,6 +192,17 @@ npm run test
 npm run e2e
 ```
 
+### API Logging
+
+- Verbose logs for every API request/response are enabled in development by default.
+- To force-enable in other environments, set an Expo public env var:
+
+```bash
+EXPO_PUBLIC_DEBUG_API_LOGS=true
+```
+
+Logs include method, URL, status, duration, and trimmed bodies. Sensitive headers like Authorization are masked.
+
 ## 🚀 Deployment
 
 ### Development Build

@@ -67,8 +67,7 @@ export default function EmailVerificationScreen({ navigation }: Props) {
         Alert.alert("Thành công", "Email đã được xác minh", [
           {
             text: "Tiếp tục",
-            onPress: () =>
-              navigation.replace("VehicleSetup", { userId: user.id }),
+            onPress: () => navigation.replace("PinSetup"),
           },
         ]);
       } else {

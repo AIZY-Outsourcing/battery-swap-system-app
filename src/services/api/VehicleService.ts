@@ -128,21 +128,25 @@ export async function createVehicleAndStore(
 ): Promise<ApiResponse<VehicleRecord>> {
   const result = await createVehicle(payload);
   if (result.success && result.data) {
-    // Merge into stored user.vehicle if structure expects single vehicle
+    // Store the actual vehicle data returned from API
     try {
       const raw = await AsyncStorage.getItem("BSS_USER_DATA");
       if (raw) {
         const user = JSON.parse(raw);
-        user.vehicle = {
-          make: payload.name,
-          model: payload.name,
-          year: payload.manufacturer_year,
-          licensePlate: payload.plate_number,
-          batteryType: payload.battery_type_id,
-        };
+        // Use the actual vehicle data from API response
+        user.vehicle = result.data;
         await AsyncStorage.setItem("BSS_USER_DATA", JSON.stringify(user));
+
+        if (__DEV__) {
+          console.log("[VehicleService] Saved vehicle to user:", {
+            vehicleId: result.data.id,
+            name: result.data.name,
+          });
+        }
       }
-    } catch {}
+    } catch (error) {
+      console.error("[VehicleService] Failed to save vehicle to user:", error);
+    }
   }
   return result;
 }

@@ -1,5 +1,5 @@
 export type Station = {
-  id: number;
+  id: number | string; // Support both number (mock) and UUID string (API)
   name: string;
   address: string;
   lat: number;
@@ -10,8 +10,14 @@ export type Station = {
   charging: number; // đang sạc
   maintenance: number;
   type: "station" | "dealer" | "service";
-  distanceKm?: number; // client computed
+  distanceKm?: number; // distance in km
   rating?: number;
+  // Additional fields from API
+  city?: string;
+  status?: string;
+  distance_m?: number;
+  duration_seconds?: number;
+  duration_minutes?: number;
 };
 
 export type FilterType = "all" | "station" | "dealer" | "service";

@@ -21,6 +21,7 @@ import AuthService from "../../../services/auth/AuthService";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { mockUser, mockSubscriptions } from "../../../data/mockData";
 import { styleTokens } from "../../../styles/tokens";
+import { useAuthStore } from "../../../store/authStore";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, "Profile">,
@@ -83,11 +84,21 @@ const MenuItem = ({ item }: { item: MenuItemDef }) => {
 
 export default function ProfileScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
+  const user = useAuthStore((state) => state.user);
   const [faceIDEnabled, setFaceIDEnabled] = useState(true);
   const activeSubscription = mockSubscriptions[0];
   const [language, setLanguage] = useState<"vi" | "en">(
     i18n.language as "vi" | "en"
   );
+
+  // Use real user data or fallback to mock
+  const displayName = user
+    ? `${user.firstName} ${user.lastName}`.trim() || user.email
+    : mockUser.name;
+  const displayPhone = user?.phone || mockUser.phone;
+  const displayEmail = user?.email || mockUser.email;
+  const userInitial = displayName.charAt(0).toUpperCase();
+  const vehicle = user ? (user as any).vehicle : null;
 
   const handleLogout = () => {
     Alert.alert(
@@ -201,15 +212,25 @@ export default function ProfileScreen({ navigation }: Props) {
         <View style={styles.profileCard}>
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{mockUser.name.charAt(0)}</Text>
+              <Text style={styles.avatarText}>{userInitial}</Text>
               <View style={styles.onlineIndicator} />
             </View>
             <View style={styles.userCol}>
-              <Text style={styles.name}>{mockUser.name}</Text>
-              <Text style={styles.meta}>{mockUser.phone}</Text>
-              <Text style={styles.metaSmall}>
-                {t("profile.batteryTypeLabel")}: {mockUser.batteryType}
-              </Text>
+              <Text style={styles.name}>{displayName}</Text>
+              <Text style={styles.meta}>{displayPhone}</Text>
+              <Text style={styles.metaSmall}>{displayEmail}</Text>
+              {vehicle && (
+                <View style={styles.vehicleBadge}>
+                  <MaterialCommunityIcons
+                    name="car-electric"
+                    size={14}
+                    color="#10b981"
+                  />
+                  <Text style={styles.vehicleText}>
+                    {vehicle.name || vehicle.model || "Xe điện"}
+                  </Text>
+                </View>
+              )}
               {activeSubscription && (
                 <View style={styles.subscriptionBadge}>
                   <MaterialCommunityIcons
@@ -241,6 +262,77 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
+
+        {/* Vehicle Info */}
+        {vehicle && (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Thông tin xe</Text>
+            </View>
+            <View style={styles.vehicleInfo}>
+              <View style={styles.vehicleInfoRow}>
+                <MaterialCommunityIcons
+                  name="car-electric"
+                  size={20}
+                  color="#10b981"
+                  style={{ marginRight: 12 }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.vehicleInfoLabel}>Tên xe</Text>
+                  <Text style={styles.vehicleInfoValue}>
+                    {vehicle.name || "--"}
+                  </Text>
+                </View>
+              </View>
+              {vehicle.plate_number && (
+                <View style={styles.vehicleInfoRow}>
+                  <MaterialCommunityIcons
+                    name="card-text-outline"
+                    size={20}
+                    color="#64748b"
+                    style={{ marginRight: 12 }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.vehicleInfoLabel}>Biển số</Text>
+                    <Text style={styles.vehicleInfoValue}>
+                      {vehicle.plate_number}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {vehicle.vin && (
+                <View style={styles.vehicleInfoRow}>
+                  <MaterialCommunityIcons
+                    name="barcode"
+                    size={20}
+                    color="#64748b"
+                    style={{ marginRight: 12 }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.vehicleInfoLabel}>VIN</Text>
+                    <Text style={styles.vehicleInfoValue}>{vehicle.vin}</Text>
+                  </View>
+                </View>
+              )}
+              {vehicle.manufacturer_year && (
+                <View style={styles.vehicleInfoRow}>
+                  <MaterialCommunityIcons
+                    name="calendar"
+                    size={20}
+                    color="#64748b"
+                    style={{ marginRight: 12 }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.vehicleInfoLabel}>Năm sản xuất</Text>
+                    <Text style={styles.vehicleInfoValue}>
+                      {vehicle.manufacturer_year}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Face ID */}
         <View style={styles.sectionCard}>
@@ -410,6 +502,18 @@ const styles = StyleSheet.create({
   name: { fontSize: 18, fontWeight: "600", color: "#111827", marginBottom: 4 },
   meta: { fontSize: 14, color: "#475569", marginBottom: 2 },
   metaSmall: { fontSize: 12, color: "#64748b", marginBottom: 6 },
+  vehicleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#d1fae5",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    gap: 4,
+    marginBottom: 4,
+  },
+  vehicleText: { fontSize: 12, fontWeight: "600", color: "#10b981" },
   subscriptionBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -440,6 +544,27 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 11, color: "#64748b" },
   statDivider: { width: 1, backgroundColor: "#e2e8f0", marginVertical: 4 },
+  vehicleInfo: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  vehicleInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  vehicleInfoLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 2,
+  },
+  vehicleInfoValue: {
+    fontSize: 15,
+    color: "#0f172a",
+    fontWeight: "500",
+  },
   sectionCard: {
     backgroundColor: "#ffffff",
     marginHorizontal: 16,

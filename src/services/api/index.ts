@@ -4,11 +4,13 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ENV } from "../../config/env";
 
 const API_BASE_URL = ENV.API_BASE_URL;
 const TOKEN_KEY = "BSS_AUTH_TOKEN";
 const REFRESH_TOKEN_KEY = "BSS_REFRESH_TOKEN";
+const USER_KEY = "BSS_USER_DATA";
 
 // Enable verbose API logs in development or when explicitly toggled via env
 const DEBUG_API_LOGS =
@@ -57,17 +59,28 @@ function sanitizeHeaders(headers: any) {
 export async function getSecureToken(): Promise<string | null> {
   try {
     const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    console.log("🔑 [getSecureToken] Retrieved from SecureStore:", {
+      key: TOKEN_KEY,
+      hasToken: !!token,
+      tokenLength: token?.length || 0,
+    });
     return token || null;
-  } catch {
+  } catch (error) {
+    console.error("⚠️ [getSecureToken] Error:", error);
     return null;
   }
 }
 
 export async function setSecureToken(token: string): Promise<void> {
   try {
+    console.log("💾 [setSecureToken] Saving to SecureStore:", {
+      key: TOKEN_KEY,
+      tokenLength: token?.length || 0,
+    });
     await SecureStore.setItemAsync(TOKEN_KEY, token);
-  } catch {
-    // noop
+    console.log("✅ [setSecureToken] Saved successfully");
+  } catch (error) {
+    console.error("⚠️ [setSecureToken] Error:", error);
   }
 }
 
@@ -155,11 +168,32 @@ async function performTokenRefresh(): Promise<string | undefined> {
           "→",
           res.status
         );
+        // Log response structure for debugging
+        console.log(
+          "[api] Refresh response data:",
+          JSON.stringify(res.data, null, 2)
+        );
       } catch {}
     }
+    // Handle nested data structure: res.data.data.data.access_token
     const newAccess =
-      res.data?.data?.access_token || res.data?.access_token || res.data?.token;
-    const newRefresh = res.data?.data?.refresh_token || res.data?.refresh_token;
+      res.data?.data?.data?.access_token ||
+      res.data?.data?.access_token ||
+      res.data?.access_token ||
+      res.data?.token;
+    const newRefresh =
+      res.data?.data?.data?.refresh_token ||
+      res.data?.data?.refresh_token ||
+      res.data?.refresh_token;
+
+    if (DEBUG_API_LOGS) {
+      console.log("[api] Parsed tokens:", {
+        hasAccess: !!newAccess,
+        hasRefresh: !!newRefresh,
+        accessLength: newAccess?.length || 0,
+      });
+    }
+
     if (newAccess) await setSecureToken(newAccess);
     if (newRefresh) await setRefreshToken(newRefresh);
     return newAccess;
@@ -175,8 +209,13 @@ async function performTokenRefresh(): Promise<string | undefined> {
         );
       } catch {}
     }
+    // Clear all auth data when refresh fails
+    console.log(
+      "🚪 [api] Refresh token failed, clearing auth data and logging out..."
+    );
     await clearSecureToken();
     await clearRefreshToken();
+    await AsyncStorage.removeItem(USER_KEY);
     return undefined;
   }
 }
@@ -285,29 +324,57 @@ api.interceptors.response.use(
 
     // Only attempt refresh for 401, not already retried, and we have a refresh token
     if (status === 401 && !original?._retry) {
+      console.log("🔄 [api] 401 detected, attempting token refresh...");
       original._retry = true;
       if (!isRefreshing) {
         isRefreshing = true;
         try {
           const newToken = await performTokenRefresh();
+          if (!newToken) {
+            // Refresh failed, user needs to login again
+            console.log(
+              "❌ [api] Token refresh returned no token, user logged out"
+            );
+            flushRefreshQueue(
+              new Error("Session expired. Please login again."),
+              undefined
+            );
+            const logoutError: any = new Error("SESSION_EXPIRED");
+            logoutError.isSessionExpired = true;
+            return Promise.reject(logoutError);
+          }
+          console.log(
+            "✅ [api] Token refresh successful, retrying request with new token"
+          );
+          // Update header with new token for retry
+          original.headers = original.headers || {};
+          (original.headers as any).Authorization = `Bearer ${newToken}`;
           flushRefreshQueue(null, newToken);
           return api(original);
         } catch (e) {
+          console.error("❌ [api] Token refresh failed:", e);
           flushRefreshQueue(e, undefined);
-          return Promise.reject(e);
+          const logoutError: any = new Error("SESSION_EXPIRED");
+          logoutError.isSessionExpired = true;
+          return Promise.reject(logoutError);
         } finally {
           isRefreshing = false;
         }
       } else {
+        console.log(
+          "⏳ [api] Token refresh already in progress, queuing request..."
+        );
         try {
           const newToken = await enqueueRefresh();
           if (newToken) {
-            (original.headers =
-              original.headers || {}).Authorization = `Bearer ${newToken}`;
+            original.headers = original.headers || {};
+            (original.headers as any).Authorization = `Bearer ${newToken}`;
           }
           return api(original);
         } catch (e) {
-          return Promise.reject(e);
+          const logoutError: any = new Error("SESSION_EXPIRED");
+          logoutError.isSessionExpired = true;
+          return Promise.reject(logoutError);
         }
       }
     }
@@ -315,5 +382,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Helper to check if error is session expired
+export function isSessionExpiredError(error: any): boolean {
+  return (
+    error?.isSessionExpired === true || error?.message === "SESSION_EXPIRED"
+  );
+}
 
 export default api;

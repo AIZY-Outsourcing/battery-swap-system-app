@@ -287,8 +287,17 @@ class AuthService {
   async getCurrentUser(): Promise<User | null> {
     try {
       const userData = await AsyncStorage.getItem(AuthService.USER_KEY);
+      console.log(
+        "🔍 [AuthService.getCurrentUser] Retrieved from AsyncStorage:",
+        {
+          key: AuthService.USER_KEY,
+          hasData: !!userData,
+          dataLength: userData?.length || 0,
+        }
+      );
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
+      console.error("⚠️ [AuthService.getCurrentUser] Error:", error);
       return null;
     }
   }
@@ -342,6 +351,12 @@ class AuthService {
       }
       const data = res.data?.data || res.data;
 
+      // Get existing user data to preserve vehicle info
+      const existingUserData = await AsyncStorage.getItem(AuthService.USER_KEY);
+      const existingUser = existingUserData
+        ? JSON.parse(existingUserData)
+        : null;
+
       // Map API user -> local User shape
       const splitName = (data.name || "").trim().split(/\s+/);
       const user: User = {
@@ -355,6 +370,13 @@ class AuthService {
         emailVerified: data.is_verified || false,
         role: data.role || "user",
       } as User;
+
+      // Preserve vehicle from existing user if API doesn't return it
+      if (existingUser && (existingUser as any).vehicle && !data.vehicle) {
+        (user as any).vehicle = (existingUser as any).vehicle;
+      } else if (data.vehicle) {
+        (user as any).vehicle = data.vehicle;
+      }
 
       await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
       return user;

@@ -9,6 +9,7 @@ import {
   TextInput,
   FlatList,
   SafeAreaView,
+  RefreshControl,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
@@ -36,17 +37,14 @@ const { width } = Dimensions.get("window");
 export default function HomeScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [distance, setDistance] = useState<DistanceOpt>(10);
   const [batteryType, setBatteryType] = useState<BatteryOpt>("");
   const [sort, setSort] = useState<SortOpt>("nearest");
   const credits = useAuthStore((s) => s.user?.swapCredits ?? 0);
 
-  const { data, isLoading, isError, refetch } = useStations({
-    q: searchQuery,
-    distance_km: distance,
+  const { data, isLoading, isError, refetch, isRefetching } = useStations({
     battery_type: batteryType || undefined,
     sort,
-    enableDistanceCompute: true,
+    radius: 10, // 10km radius
   });
   const stations = data || [];
 
@@ -314,6 +312,14 @@ export default function HomeScreen({ navigation }: Props) {
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.stationsList}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor="#10b981"
+              colors={["#10b981"]}
+            />
+          }
           ListEmptyComponent={() => (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>{t("home.noStations")}</Text>

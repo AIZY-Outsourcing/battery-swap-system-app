@@ -1,22 +1,22 @@
-import { api } from ".";
+import { api } from "./index";
 import { stations as mockStations } from "../../data/stations";
 import type { Station as StationDto } from "../../types/station";
 import { ENV } from "../../config/env";
 
 type ListParams = {
-  q?: string;
-  distance_km?: number;
-  battery_type?: string; // A | B | C
+  lat?: number;
+  lng?: number;
+  radius?: number; // A | B | C
 };
 
 // Map API response into our Station type if needed
 function normalizeStation(s: any): StationDto {
   return {
-    id: Number(s.id),
+    id: s.id, // Keep as is (can be UUID string or number)
     name: s.name,
     address: s.address,
-    lat: s.lat ?? s.latitude ?? s.coordinates?.latitude ?? 0,
-    lng: s.lng ?? s.longitude ?? s.coordinates?.longitude ?? 0,
+    lat: parseFloat(s.lat ?? s.latitude ?? s.coordinates?.latitude ?? 0),
+    lng: parseFloat(s.lng ?? s.longitude ?? s.coordinates?.longitude ?? 0),
     openHours:
       s.openHours ??
       `${s.operatingHours?.open ?? "07:00"} - ${
@@ -28,7 +28,13 @@ function normalizeStation(s: any): StationDto {
     maintenance: s.maintenance ?? 0,
     type: s.type ?? "station",
     rating: s.rating ?? undefined,
-    distanceKm: s.distanceKm ?? undefined,
+    distanceKm: s.distance_km ?? s.distanceKm ?? undefined,
+    // Additional fields from API
+    city: s.city ?? undefined,
+    status: s.status ?? undefined,
+    distance_m: s.distance_m ?? undefined,
+    duration_seconds: s.duration_seconds ?? undefined,
+    duration_minutes: s.duration_minutes ?? undefined,
   };
 }
 
@@ -36,10 +42,45 @@ export async function listStations(
   params: ListParams = {}
 ): Promise<StationDto[]> {
   try {
-    const res = await api.get("/stations", { params });
-    const items = Array.isArray(res.data) ? res.data : res.data?.data || [];
+    if (__DEV__) {
+      console.log(
+        "[StationService.listStations] calling GET /stations/nearby with params:",
+        params
+      );
+    }
+
+    const res = await api.get("/stations/nearby", { params });
+
+    if (__DEV__) {
+      console.log("[StationService.listStations] response:", res.data);
+    }
+
+    // Handle different response formats
+    let items: any[] = [];
+
+    if (Array.isArray(res.data)) {
+      items = res.data;
+    } else if (Array.isArray(res.data?.data)) {
+      items = res.data.data;
+    } else if (res.data?.data && typeof res.data.data === "object") {
+      // Handle object with numeric keys like {"0": {...}, "1": {...}}
+      items = Object.values(res.data.data);
+    } else {
+      items = [];
+    }
+
+    if (__DEV__) {
+      console.log(
+        "[StationService.listStations] parsed items count:",
+        items.length
+      );
+    }
+
     return items.map(normalizeStation);
   } catch (e) {
+    if (__DEV__) {
+      console.log("[StationService.listStations] error, using mock data:", e);
+    }
     if (true) {
       return mockStations.map((s) => ({ ...s }));
     }
@@ -93,7 +134,7 @@ export async function reserveStation(
 // Backward-compatible class wrapper (if other parts import default)
 class StationServiceCompat {
   async getNearbyStations(lat: number, lng: number, radius: number = 10) {
-    const data = await listStations({ distance_km: radius });
+    const data = await listStations({ lat, lng, radius });
     return { success: true, data } as const;
   }
   async getStationById(stationId: string) {
@@ -110,8 +151,8 @@ class StationServiceCompat {
       };
     }
   }
-  async searchStations(query: string) {
-    const data = await listStations({ q: query });
+  async searchStations() {
+    const data = await listStations({});
     return { success: true, data } as const;
   }
   async getStationAvailability(stationId: string, date: string) {

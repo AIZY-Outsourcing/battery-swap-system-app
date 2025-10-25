@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
 import { track } from "../../../services/analytics";
+import { useAuthStore } from "../../../store/authStore";
 
 type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -19,6 +20,7 @@ const SplashScreen = () => {
   const navigation = useNavigation<SplashScreenNavigationProp>();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showDebugButtons, setShowDebugButtons] = useState(false);
+  const hydrate = useAuthStore((state) => state.hydrate);
 
   useEffect(() => {
     checkAuthStatus();
@@ -27,37 +29,62 @@ const SplashScreen = () => {
   const checkAuthStatus = async () => {
     try {
       track({ name: "app_launch" });
+
+      console.log("🚀 [SplashScreen] Starting auth check...");
+
+      // Hydrate auth store from AsyncStorage/SecureStore first
+      await hydrate();
+
+      console.log(
+        "⏳ [SplashScreen] Hydration complete, checking auth status..."
+      );
+
       // Brief delay to show splash
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const isLoggedIn = await AuthService.isLoggedIn();
+      console.log("🔐 [SplashScreen] isLoggedIn:", isLoggedIn);
+
       track({
         name: "auth_state_checked",
         result: isLoggedIn ? "logged_in" : "logged_out",
       });
 
       if (isLoggedIn) {
+        console.log("✅ [SplashScreen] User is logged in, fetching profile...");
         // Try refresh / fetch profile
         await AuthService.getMe();
-        // Check if user has completed vehicle setup
-        const hasVehicleSetup = await AuthService.hasCompletedVehicleSetup();
 
-        if (hasVehicleSetup) {
-          // User is fully set up, go to main app
+        // Check if user has vehicle in local storage
+        const user = await AuthService.getCurrentUser();
+        const hasVehicle = !!(user && (user as any).vehicle);
+
+        console.log(
+          "🚗 [SplashScreen] hasVehicle:",
+          hasVehicle,
+          "vehicle:",
+          (user as any)?.vehicle?.id
+        );
+
+        if (hasVehicle) {
+          // User has vehicle, go to main app
+          console.log("➡️ [SplashScreen] Navigating to AppStack");
           navigation.replace("AppStack");
         } else {
           // User needs to complete vehicle setup
-          const user = await AuthService.getCurrentUser();
+          console.log(
+            "➡️ [SplashScreen] Navigating to AuthStack (vehicle setup needed)"
+          );
           navigation.replace("AuthStack");
-          // Will navigate to VehicleSetup screen from auth stack
         }
       } else {
         // User not logged in, show auth options
+        console.log("❌ [SplashScreen] Not logged in, showing auth options");
         setIsCheckingAuth(false);
         setShowDebugButtons(true);
       }
     } catch (error) {
-      console.error("Auth check error:", error);
+      console.error("⚠️ [SplashScreen] Auth check error:", error);
       setIsCheckingAuth(false);
       setShowDebugButtons(true);
     }

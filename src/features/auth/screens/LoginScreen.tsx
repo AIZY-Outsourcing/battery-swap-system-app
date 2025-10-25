@@ -66,6 +66,12 @@ export default function LoginScreen({ navigation }: Props) {
         return;
       }
 
+      console.log("✅ [LoginScreen] Login successful, updating authStore...", {
+        hasToken: !!token,
+        hasUser: !!user,
+        userId: user?.id,
+      });
+
       setAuth(token, user);
       track({ name: "login_success" });
 

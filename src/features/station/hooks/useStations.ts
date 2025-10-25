@@ -5,55 +5,48 @@ import type { Station } from "../../../types/station";
 import { distanceKm } from "../../../utils/geo";
 
 export type StationFilters = {
-  q?: string;
-  distance_km?: number;
-  battery_type?: string; // A | B | C
+  radius?: number; // km, default 10
+  battery_type?: string; // filter by battery type if needed
   sort?: "nearest" | "rating";
-  enableDistanceCompute?: boolean; // compute distance client-side if missing
 };
 
 export function useStations(filters: StationFilters = {}) {
   return useQuery<Station[], Error>({
     queryKey: ["stations", filters],
     queryFn: async () => {
-      const data = await listStations({
-        q: filters.q,
-        distance_km: filters.distance_km,
-        battery_type: filters.battery_type,
-      });
+      // Get user location first
+      let userLat: number | undefined;
+      let userLng: number | undefined;
 
-      // Client-side filter by battery_type if backend not supported
-      let result = data;
-      if (filters.battery_type) {
-        result = result.filter(() => true); // placeholder if battery type is part of inventory later
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({});
+          userLat = loc.coords.latitude;
+          userLng = loc.coords.longitude;
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.log("[useStations] Failed to get location:", error);
+        }
       }
 
-      // Optionally compute distance if not provided
-      if (filters.enableDistanceCompute) {
-        try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === "granted") {
-            const loc = await Location.getCurrentPositionAsync({});
-            result = result
-              .map((s) => ({
-                ...s,
-                distanceKm: distanceKm(
-                  loc.coords.latitude,
-                  loc.coords.longitude,
-                  s.lat,
-                  s.lng
-                ),
-              }))
-              .sort((a, b) =>
-                filters.sort === "rating"
-                  ? (b.rating || 0) - (a.rating || 0)
-                  : (a.distanceKm || 0) - (b.distanceKm || 0)
-              );
-          }
-        } catch {
-          // ignore location errors
-        }
-      } else if (filters.sort === "rating") {
+      // Call API with lat/lng and radius
+      const data = await listStations({
+        lat: userLat,
+        lng: userLng,
+        radius: filters.radius || 10, // default 10km
+      });
+
+      // Client-side filter by battery_type if needed
+      let result = data;
+      if (filters.battery_type) {
+        // Backend should handle this, but fallback to client-side if needed
+        result = result.filter(() => true); // placeholder
+      }
+
+      // Sort by rating if requested (backend returns sorted by distance)
+      if (filters.sort === "rating") {
         result = [...result].sort((a, b) => (b.rating || 0) - (a.rating || 0));
       }
 

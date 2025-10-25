@@ -10,8 +10,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
+import { useAuthStore } from "../../../store/authStore";
 
 export default function SettingsScreen({ navigation }: any) {
+  const logout = useAuthStore((state) => state.logout);
   const [settings, setSettings] = useState({
     notifications: true,
     biometric: false,
@@ -33,7 +35,18 @@ export default function SettingsScreen({ navigation }: any) {
       {
         text: "Đăng xuất",
         style: "destructive",
-        onPress: () => console.log("Logout"),
+        onPress: async () => {
+          try {
+            await logout();
+            // Navigate to auth stack
+            (navigation as any).getParent()?.reset({
+              index: 0,
+              routes: [{ name: "AuthStack" }],
+            });
+          } catch (error) {
+            Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại.");
+          }
+        },
       },
     ]);
   };

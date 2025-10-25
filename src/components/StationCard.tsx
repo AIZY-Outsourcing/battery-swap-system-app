@@ -85,11 +85,32 @@ export default function StationCard({
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.title}>{station.name}</Text>
-          {station.distanceKm && (
-            <Text style={styles.distance}>
-              {formatDistance(station.distanceKm)}
-            </Text>
-          )}
+          <View style={styles.metaInfo}>
+            {station.distanceKm !== undefined && (
+              <View style={styles.metaItem}>
+                <MaterialCommunityIcons
+                  name="map-marker-distance"
+                  size={14}
+                  color={styleTokens.colors.primary}
+                />
+                <Text style={styles.metaText}>
+                  {station.distanceKm.toFixed(1)} km
+                </Text>
+              </View>
+            )}
+            {station.duration_minutes !== undefined && (
+              <View style={styles.metaItem}>
+                <MaterialCommunityIcons
+                  name="clock-outline"
+                  size={14}
+                  color={styleTokens.colors.primary}
+                />
+                <Text style={styles.metaText}>
+                  ~{station.duration_minutes} phút
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
         {station.rating && (
           <View style={styles.rating}>
@@ -99,6 +120,7 @@ export default function StationCard({
       </View>
 
       <Text style={styles.address}>{station.address}</Text>
+      {station.city && <Text style={styles.city}>📍 {station.city}</Text>}
 
       <View style={styles.info}>
         <View
@@ -214,6 +236,21 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     color: styleTokens.colors.textDark,
   },
+  metaInfo: {
+    flexDirection: "row",
+    gap: styleTokens.spacing.md,
+    marginTop: styleTokens.spacing.xs,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaText: {
+    ...styleTokens.typography.small,
+    color: styleTokens.colors.primary,
+    fontWeight: "600",
+  },
   distance: {
     ...styleTokens.typography.small,
     color: styleTokens.colors.primaryAccent || styleTokens.colors.primary,
@@ -230,8 +267,14 @@ const styles = StyleSheet.create({
   },
   address: {
     ...styleTokens.typography.subtitle,
-    marginBottom: styleTokens.spacing.sm,
+    marginBottom: 4,
     color: styleTokens.colors.textMuted,
+  },
+  city: {
+    ...styleTokens.typography.small,
+    color: styleTokens.colors.textMuted,
+    marginBottom: styleTokens.spacing.sm,
+    fontStyle: "italic",
   },
   info: {
     flexDirection: "row",

@@ -25,6 +25,12 @@ export default function CustomTabBar({
   const insets = useSafeAreaInsets();
   const bottomGap = Math.max(insets.bottom + 6, 12); // keep some distance from system gesture
 
+  // Ẩn tab bar khi đang ở màn hình QRScan
+  const currentRoute = state.routes[state.index];
+  if (currentRoute.name === "QRScan") {
+    return null;
+  }
+
   // Map route name to a MaterialCommunityIcons icon name
   const iconFor = (name: string): MCIconName => {
     switch (name) {

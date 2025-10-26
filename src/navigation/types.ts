@@ -11,7 +11,19 @@ export type RootStackParamList = {
   };
   // Swap screens
   QRScan: undefined;
-  SwapSession: { stationId: string };
+  PinVerification: { sessionToken: string; kioskId: string; stationId: string };
+  SwapSession: { 
+    sessionData?: {
+      id: string;
+      session_token: string;
+      station_id: string;
+      user_id: string;
+      status: string;
+      expires_at: string;
+    };
+    kioskId?: string;
+    stationId?: string;
+  };
   SwapSuccess: { swapData: any };
   SwapHistory: undefined;
   // Payment screens

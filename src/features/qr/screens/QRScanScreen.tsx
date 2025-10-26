@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  Alert,
   Vibration,
+  Alert,
   TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "../../../theme";
+import { CameraView } from "expo-camera";
+import { useIsFocused } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import Button from "../../../components/ui/Button";
+import OverlayScanner from "../../../components/custom/OverlayScanner/OverlayScanner";
+import { useCamera } from "../../../hooks/useCamera";
+import StationSessionService from "../../../services/api/StationSessionService";
 
 interface QRScanScreenProps {
   navigation: any;
@@ -16,232 +21,366 @@ interface QRScanScreenProps {
 }
 
 export default function QRScanScreen({ navigation, route }: QRScanScreenProps) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const { permission, requestPermission, isCameraAvailable } =
+    useCamera("qr-scanner-screen");
   const [scanned, setScanned] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showErrorCard, setShowErrorCard] = useState(false);
+  const isFocused = useIsFocused();
+  const cameraRef = useRef(null);
+  const hasScannedRef = useRef(false);
+  const apiCalledRef = useRef(false);
+  const isProcessingRef = useRef(false);
 
-  useEffect(() => {
-    // Simulate camera permission request
-    setHasPermission(true);
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (cameraRef.current) {
+      setScanned(false);
+      setIsProcessing(false);
+      setShowErrorCard(false);
+      hasScannedRef.current = false;
+      apiCalledRef.current = false;
+      isProcessingRef.current = false;
+      // Thêm delay nhỏ để đảm bảo cleanup hoàn tất
+      setTimeout(() => {
+        cameraRef.current = null;
+      }, 100);
+    }
   }, []);
 
-  const handleScanPress = () => {
-    // Simulate QR scan - replace with actual camera/barcode scanner
-    const mockQRData = "BSS_KIOSK_12345";
+  useEffect(() => {
+    if (isFocused) {
+      setScanned(false);
+      setIsProcessing(false);
+      setShowErrorCard(false);
+      hasScannedRef.current = false;
+      apiCalledRef.current = false;
+      isProcessingRef.current = false;
+    } else {
+      cleanup();
+    }
 
-    Vibration.vibrate(100);
-    const kioskId = mockQRData
-      .replace("BSS_KIOSK_", "")
-      .replace("BSS_STATION_", "");
+    return () => {
+      cleanup();
+    };
+  }, [isFocused, cleanup]);
 
-    navigation.navigate("SwapSession", {
-      kioskId,
-      stationId: route.params?.stationId || null,
-    });
+  const handleBarCodeScanned = useCallback(
+    async ({ type, data }: any) => {
+      // Strict check - if already scanned or processing, return immediately
+      if (
+        !isCameraAvailable ||
+        scanned ||
+        isProcessing ||
+        hasScannedRef.current ||
+        apiCalledRef.current ||
+        isProcessingRef.current
+      ) {
+        console.log(
+          "QR scan blocked - already scanned, processing, or API called"
+        );
+        return;
+      }
+
+      console.log("QR detected, starting processing...");
+
+      // Immediately set ALL flags to prevent any further scanning
+      hasScannedRef.current = true;
+      apiCalledRef.current = true;
+      isProcessingRef.current = true;
+      setScanned(true);
+      setIsProcessing(true);
+      Vibration.vibrate(100);
+
+      console.log(`Scanned: ${type}, ${data}`);
+
+      try {
+        // Extract session token from QR data
+        let sessionToken = data;
+        let kioskId = "";
+        let stationId = route.params?.stationId || null;
+
+        // Check for QR data prefix and extract token
+        if (data.startsWith("qr_data=")) {
+          // New format: "qr_data eyJpdiI6Ijc5ZTNiMmVmYmRmMjM2YzAyM2U4ODM1ODNiODRjNTY3IiwiYXV0aFRhZyI6IjBiYWIwNmNiNTM5ZThmMmJiZTY1ODNiYTBkMmU1MDU4IiwiZGF0YSI6ImVlYTMwY2VkMjc1OWM3Yjk1MWE2YzQ4NjZmOWYyZjQ1NDRlZDE0NjY1MGUzN2U5N2M4OTIwOWI3YThkNzJjYzFkNzdkYzhlY2QwODVhZTI2NmFkMGQ5MmY4MzE4MDZjOTg2Mzc1NmMzZTg0YTNmMWU0YzBlNzI2MjUwZTM2OWZiZmMwODVjMWY1YzE2MThkN2U1OWFjMTc1N2Y1MzA2ZDNhNjBjYjNkOWMyODUwZTk5MGJmZjRjODc2NmNhMzlmM2E2ODI0M2I4YTZlNzkwYzdkMmI0MGY2ZWNkYTliMDQ2MDAyNWNkOGNlYzg2YWI5YTJlNjUxZjhiZDU3NTIyMzgzZDk2MTM3ZGFhNWZjMzEwOGJiNDZmMjgyMDA4NTEwYTY5YTkwYTIyYmQ1YzcwODNiMDFkMzk2ZmJmNjcifQ=="
+          sessionToken = data.replace("qr_data=", "");
+        } else if (data.startsWith("BSS_SESSION_")) {
+          // Legacy format: "BSS_SESSION_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          sessionToken = data.replace("BSS_SESSION_", "");
+        } else if (data.startsWith("BSS_KIOSK_")) {
+          // Legacy format - extract kiosk ID
+          kioskId = data.replace("BSS_KIOSK_", "");
+          sessionToken = `mock_session_${kioskId}`;
+        } else if (data.startsWith("BSS_STATION_")) {
+          // Legacy format - extract station ID
+          stationId = data.replace("BSS_STATION_", "");
+          sessionToken = `mock_session_${stationId}`;
+        } else {
+          // Unsupported QR format - show error card instead of alert
+          setShowErrorCard(true);
+          return;
+        }
+
+        // Try to authenticate with QR
+        const authRes = await StationSessionService.authenticateQR({
+          session_token: sessionToken,
+        });
+
+        console.log("Auth response:", JSON.stringify(authRes, null, 2));
+
+        // Parse the response - authRes.data might be a JSON string
+        let parsedData = authRes.data;
+        if (typeof authRes.data === "string") {
+          try {
+            parsedData = JSON.parse(authRes.data);
+          } catch (e) {
+            console.error("Failed to parse authRes.data:", e);
+          }
+        }
+
+        console.log("Parsed data:", parsedData);
+
+        // Handle the actual response structure: { data: { success: true, data: {...} } }
+        const sessionData = (parsedData as any)?.data;
+        const isSuccess = (parsedData as any)?.success === true && sessionData;
+
+        console.log("Session data:", sessionData);
+        console.log("Is success:", isSuccess);
+
+        if (isSuccess) {
+          // Success! Navigate to SwapSession
+          console.log("Navigating to SwapSession with data:", sessionData);
+          navigation.navigate("SwapSession", {
+            sessionData: sessionData,
+            kioskId: sessionData.station_id,
+            stationId: sessionData.station_id,
+          });
+        } else {
+          console.log("Authentication failed, checking error...");
+          // Authentication failed, check if it's a 2FA error
+          if (
+            authRes.error?.code === "QR_AUTH_FAILED" ||
+            authRes.error?.code === "QR_AUTH_INVALID" ||
+            authRes.error?.code === "QR_AUTH_2FA_REQUIRED"
+          ) {
+            // Navigate to PIN verification screen
+            navigation.navigate("PinVerification", {
+              sessionToken,
+              kioskId: kioskId || sessionData?.station_id,
+              stationId: stationId || sessionData?.station_id,
+            });
+          } else {
+            Alert.alert(
+              "Lỗi",
+              authRes.error?.message || "Xác thực QR thất bại"
+            );
+            setScanned(false);
+            setIsProcessing(false);
+          }
+        }
+      } catch (error: any) {
+        console.error("QR scan error:", error);
+        Alert.alert("Lỗi", "Có lỗi xảy ra khi xử lý QR code");
+        setScanned(false);
+        setIsProcessing(false);
+      }
+    },
+    [
+      isCameraAvailable,
+      scanned,
+      isProcessing,
+      navigation,
+      route.params?.stationId,
+    ]
+  );
+
+  if (permission === null) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang khởi tạo camera...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (permission === false) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.permissionText}>
+            Chúng tôi cần quyền truy cập camera để quét QR code
+          </Text>
+          <Button
+            title="Cấp quyền truy cập"
+            onPress={requestPermission}
+            variant="primary"
+            size="medium"
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (!permission || !isFocused) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang khởi tạo camera...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const renderCamera = () => {
+    if (!isFocused || !isCameraAvailable) return null;
+
+    // Completely disable camera if already processed
+    if (
+      hasScannedRef.current ||
+      apiCalledRef.current ||
+      isProcessingRef.current
+    ) {
+      return (
+        <View style={StyleSheet.absoluteFillObject}>
+          <OverlayScanner />
+        </View>
+      );
+    }
+
+    return (
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFillObject}
+        facing="back"
+        enableTorch={false}
+        onBarcodeScanned={handleBarCodeScanned}
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr"],
+        }}
+      >
+        <OverlayScanner />
+      </CameraView>
+    );
   };
 
-  if (hasPermission === null) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContent}>
-          {/* Loading state - you can add a loading indicator here */}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (hasPermission === false) {
-    Alert.alert(
-      "Không có quyền truy cập camera",
-      "Ứng dụng cần quyền truy cập camera để quét QR code.",
-      [
-        { text: "Quay lại", onPress: () => navigation.goBack() },
-        {
-          text: "Cài đặt",
-          onPress: () => {
-            /* Open app settings */
-          },
-        },
-      ]
-    );
-    return null;
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Simulated Camera View */}
-      <View style={styles.scanner}>
-        <View style={styles.mockCamera}>
-          <Text style={styles.mockCameraText}>Camera View</Text>
-          <Text style={styles.mockCameraSubtext}>
-            (QR Scanner sẽ hoạt động khi cài đặt expo-camera)
-          </Text>
-        </View>
-      </View>
+    <View style={styles.container}>
+      {renderCamera()}
 
-      {/* Scanner overlay */}
-      <View style={styles.overlay}>
-        <View style={styles.unfocusedContainer}>
-          <View style={styles.middleContainer}>
-            <View style={styles.focusedContainer}>
-              <View style={styles.scanFrame}>
-                {/* Corner borders */}
-                <View style={[styles.corner, styles.topLeft]} />
-                <View style={[styles.corner, styles.topRight]} />
-                <View style={[styles.corner, styles.bottomLeft]} />
-                <View style={[styles.corner, styles.bottomRight]} />
-              </View>
+      {/* Back Button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Error Card */}
+      {showErrorCard && (
+        <View style={styles.errorCard}>
+          <View style={styles.errorCardContent}>
+            <View style={styles.errorIcon}>
+              <Ionicons name="information-circle" size={20} color="#007AFF" />
             </View>
+            <Text style={styles.errorText}>
+              Mã không được hỗ trợ thanh toán
+            </Text>
+            <TouchableOpacity
+              style={styles.errorCloseButton}
+              onPress={() => {
+                setShowErrorCard(false);
+                setScanned(false);
+                setIsProcessing(false);
+                hasScannedRef.current = false;
+                apiCalledRef.current = false;
+                isProcessingRef.current = false;
+              }}
+            >
+              <Ionicons name="close" size={20} color="#000" />
+            </TouchableOpacity>
           </View>
         </View>
+      )}
 
-        {/* Instructions */}
-        <View style={styles.instructionsContainer}>
-          <Text style={styles.instructionsText}>
-            Đưa QR code vào khung để quét
-          </Text>
-          <Text style={styles.subInstructionsText}>
-            QR code nằm trên màn hình kiosk tại trạm
-          </Text>
-
-          {/* Mock Scan Button for testing */}
-          <TouchableOpacity
-            style={styles.mockScanButton}
-            onPress={handleScanPress}
-          >
-            <Text style={styles.mockScanButtonText}>
-              Mô phỏng quét QR (Test)
-            </Text>
-          </TouchableOpacity>
+      {(!isFocused || !isCameraAvailable) && (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang khởi tạo camera...</Text>
         </View>
-      </View>
-    </SafeAreaView>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "black",
   },
-  scanner: {
-    flex: 1,
-  },
-  centerContent: {
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
-  overlay: {
+  loadingText: {
+    color: "white",
+    fontSize: 16,
+  },
+  permissionText: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  buttonContainer: {
     position: "absolute",
-    top: 0,
+    bottom: 40,
     left: 0,
     right: 0,
-    bottom: 0,
-  },
-  unfocusedContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
     alignItems: "center",
   },
-  middleContainer: {
-    width: 250,
-    height: 250,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  focusedContainer: {
-    width: 200,
-    height: 200,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  scanFrame: {
-    width: 200,
-    height: 200,
-    position: "relative",
-    backgroundColor: "transparent",
-  },
-  corner: {
+  backButton: {
     position: "absolute",
-    width: 30,
-    height: 30,
-    borderColor: "#5D7B6F",
-    borderWidth: 4,
+    top: 50,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
   },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-  },
-  instructionsContainer: {
+  errorCard: {
     position: "absolute",
     bottom: 100,
     left: 20,
     right: 20,
-    alignItems: "center",
-  },
-  instructionsText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  subInstructionsText: {
-    color: "#ccc",
-    fontSize: 14,
-    textAlign: "center",
-  },
-
-  // Mock camera styles
-  mockCamera: {
-    flex: 1,
-    backgroundColor: theme.colors.surface.elevated,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "#fff",
     borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
   },
-  mockCameraText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.colors.text.primary,
+  errorCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
   },
-  mockCameraSubtext: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    marginTop: 8,
-    textAlign: "center",
+  errorIcon: {
+    marginRight: 12,
   },
-  mockScanButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    marginTop: 20,
+  errorText: {
+    flex: 1,
+    fontSize: 16,
+    color: "#000",
+    fontWeight: "500",
   },
-  mockScanButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
+  errorCloseButton: {
+    padding: 4,
   },
 });

@@ -133,14 +133,34 @@ export async function createVehicleAndStore(
       const raw = await AsyncStorage.getItem("BSS_USER_DATA");
       if (raw) {
         const user = JSON.parse(raw);
-        // Use the actual vehicle data from API response
-        user.vehicle = result.data;
+        
+        // Convert VehicleRecord to User vehicle format
+        const vehicleData = {
+          id: result.data.id,
+          make: result.data.name.split(' ')[0] || 'Unknown', // Extract make from name
+          model: result.data.name,
+          year: result.data.year,
+          licensePlate: result.data.plateNumber,
+          vin: result.data.vin,
+          batteryType: result.data.batteryTypeId,
+        };
+
+        // Add to vehicles array if it exists, otherwise create it
+        if (!user.vehicles) {
+          user.vehicles = [];
+        }
+        user.vehicles.push(vehicleData);
+        
+        // Also keep the legacy vehicle field for backward compatibility
+        user.vehicle = vehicleData;
+        
         await AsyncStorage.setItem("BSS_USER_DATA", JSON.stringify(user));
 
         if (__DEV__) {
           console.log("[VehicleService] Saved vehicle to user:", {
             vehicleId: result.data.id,
             name: result.data.name,
+            vehiclesCount: user.vehicles.length,
           });
         }
       }

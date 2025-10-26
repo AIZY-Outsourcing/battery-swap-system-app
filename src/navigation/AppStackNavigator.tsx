@@ -9,6 +9,8 @@ import MainNavigator from "./MainNavigator";
 import StationDetailScreen from "../features/station/screens/StationDetailScreen";
 // QR screens
 import QRScanScreen from "../features/qr/screens/QRScanScreen";
+// Auth screens
+import PinVerificationScreen from "../features/auth/screens/PinVerificationScreen";
 // Swap screens
 import { SwapSessionScreen } from "../features/swap/screens/SwapSessionScreen";
 import { SwapSuccessScreen } from "../features/swap/screens/SwapSuccessScreen";
@@ -87,6 +89,13 @@ export default function AppStackNavigator() {
           headerShown: true,
           title: "QR",
           headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="PinVerification"
+        component={PinVerificationScreen}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen

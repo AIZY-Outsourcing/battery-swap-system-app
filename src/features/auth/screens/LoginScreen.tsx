@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTheme } from "../../../theme/ThemeProvider";
-import { Input, ThemedButton, ThemedCard } from "../../../components";
-// Layout
-import AuthLayout from "../components/AuthLayout";
+import { Input, ThemedButton } from "../../../components";
 import { AuthStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
 import { useAuthStore } from "../../../store/authStore";
@@ -140,152 +138,301 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <AuthLayout
-      title="BSS"
-      subtitle="Battery Swapping Station"
-      contentContainerStyle={{}}
-    >
-      <ThemedCard style={{ paddingVertical: theme.spacing[6] }}>
-        <Text
-          style={{
-            fontSize: theme.typography.fontSize["2xl"],
-            fontWeight: theme.typography.fontWeight.semibold as any,
-            textAlign: "center",
-            marginBottom: theme.spacing[6],
-            color: theme.colors.text.primary,
-          }}
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
         >
-          Đăng nhập
-        </Text>
-
-        <View style={{ gap: theme.spacing[5] }}>
-          <View style={styles.fieldGroup}>
-            <Input
-              label="Email / Số điện thoại"
-              placeholder="Nhập email hoặc số điện thoại"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={
-                email.length > 0 && !emailValid
-                  ? "Email / SĐT không hợp lệ"
-                  : undefined
-              }
-              leftIcon={
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color={
-                    email.length > 0 && !emailValid
-                      ? theme.colors.error
-                      : theme.colors.text.secondary
-                  }
-                />
-              }
-            />
-            <Input
-              label="Mật khẩu"
-              placeholder="Nhập mật khẩu"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              error={
-                password.length > 0 && !passwordValid
-                  ? "Ít nhất 6 ký tự"
-                  : undefined
-              }
-              leftIcon={
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={theme.colors.text.secondary}
-                />
-              }
-              rightIcon={
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={theme.colors.text.secondary}
-                />
-              }
-              onRightIconPress={() => setShowPassword((s) => !s)}
-            />
-          </View>
-          <ThemedButton
-            title={isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
-            onPress={handleLogin}
-            variant="primary"
-            fullWidth
-            disabled={isLoading || !formValid}
+          <Ionicons name="arrow-back" size={24} color="#5D7B6F" />
+        </TouchableOpacity>
+        <View style={styles.logoContainer}>
+          <MaterialCommunityIcons 
+            name="battery-charging-medium" 
+            size={40} 
+            color="#5D7B6F" 
           />
-          {__DEV__ && (
-            <ThemedButton
-              title="🚀 Quick Login (Dev)"
-              onPress={handleQuickLogin}
-              variant="secondary"
-              fullWidth
-            />
-          )}
-          <View style={{ gap: theme.spacing[3] }}>
-            <Text
-              style={{
-                textAlign: "center",
-                color: theme.colors.text.secondary,
-                fontSize: theme.typography.fontSize.sm,
-                fontWeight: theme.typography.fontWeight.medium as any,
-              }}
-            >
-              Tuỳ chọn nhanh (sắp ra mắt)
-            </Text>
-            <View style={{ flexDirection: "row", gap: theme.spacing[3] }}>
-              <ThemedButton
-                title="👆 Vân tay"
-                variant="tertiary"
-                size="sm"
-                style={{ flex: 1 }}
-                onPress={() =>
-                  Alert.alert("Thông tin", "Biometric login coming soon!")
+        </View>
+        <View style={styles.placeholder} />
+      </View>
+
+      {/* Main Content */}
+      <View style={styles.content}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Đăng nhập</Text>
+          <Text style={styles.subtitle}>Chào mừng bạn trở lại!</Text>
+        </View>
+
+        {/* Form */}
+        <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email / Số điện thoại</Text>
+            <View style={styles.inputWrapper}>
+              <Input
+                placeholder="Nhập email hoặc số điện thoại"
+                placeholderTextColor="#94a3b8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={
+                  email.length > 0 && !emailValid
+                    ? "Email / SĐT không hợp lệ"
+                    : undefined
                 }
-              />
-              <ThemedButton
-                title="😀 Face ID"
-                variant="tertiary"
-                size="sm"
-                style={{ flex: 1 }}
-                onPress={() =>
-                  Alert.alert("Thông tin", "Face ID login coming soon!")
-                }
+                style={styles.input}
+                containerStyle={styles.inputContainerStyle}
               />
             </View>
           </View>
-          <ThemedButton
-            title="Chưa có tài khoản? Đăng ký"
-            onPress={() => navigation.navigate("Register")}
-            variant="tertiary"
-            fullWidth
-          />
-          <Text
-            style={{
-              textAlign: "center",
-              fontSize: theme.typography.fontSize.xs,
-              color: theme.colors.text.tertiary,
-              marginTop: theme.spacing[2],
-            }}
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Mật khẩu</Text>
+            <View style={styles.inputWrapper}>
+              <Input
+                placeholder="Nhập mật khẩu"
+                placeholderTextColor="#94a3b8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                error={
+                  password.length > 0 && !passwordValid
+                    ? "Ít nhất 6 ký tự"
+                    : undefined
+                }
+                style={styles.input}
+                containerStyle={styles.inputContainerStyle}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#5D7B6F" 
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Login Button */}
+          <TouchableOpacity
+            style={[
+              styles.loginButton,
+              (!formValid || isLoading) && styles.loginButtonDisabled
+            ]}
+            onPress={handleLogin}
+            disabled={!formValid || isLoading}
           >
-            BSS v1.0.0
-          </Text>
+            <Text style={styles.loginButtonText}>
+              {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Quick Options */}
+          <View style={styles.quickOptionsContainer}>
+            <Text style={styles.quickOptionsTitle}>Đăng nhập nhanh</Text>
+            <View style={styles.quickOptionsRow}>
+              <TouchableOpacity 
+                style={styles.quickOptionButton}
+                onPress={() => Alert.alert("Thông tin", "Biometric login coming soon!")}
+              >
+                <Ionicons name="finger-print" size={24} color="#5D7B6F" />
+                <Text style={styles.quickOptionText}>Vân tay</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.quickOptionButton}
+                onPress={() => Alert.alert("Thông tin", "Face ID login coming soon!")}
+              >
+                <Ionicons name="scan" size={24} color="#5D7B6F" />
+                <Text style={styles.quickOptionText}>Face ID</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </ThemedCard>
-    </AuthLayout>
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.registerButton}
+          onPress={() => navigation.navigate("Register")}
+        >
+          <Text style={styles.registerButtonText}>
+            Chưa có tài khoản? <Text style={styles.registerButtonTextBold}>Đăng ký</Text>
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.versionText}>BSS v1.0.0</Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  fieldGroup: {
-    gap: 12,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
   },
-  icon: {
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  backButton: {
+    padding: 8,
+  },
+  logoContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#D7F9FA",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#B0D4B8",
+  },
+  placeholder: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: "center",
+  },
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#64748b",
+  },
+  formContainer: {
+    gap: 24,
+  },
+  inputContainer: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    position: "relative",
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1e293b",
+    fontWeight: "500",
+    paddingRight: 50,
+  },
+  inputContainerStyle: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 26,
+    top: "50%",
+    transform: [{ translateY: -1 }],
+    padding: 4,
+    zIndex: 1,
+  },
+  loginButton: {
+    backgroundColor: "#5D7B6F",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  loginButtonDisabled: {
+    backgroundColor: "#B0D4B8",
+    opacity: 0.6,
+  },
+  loginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  quickOptionsContainer: {
+    alignItems: "center",
+    marginTop: 20,
+  },
+  quickOptionsTitle: {
     fontSize: 14,
+    color: "#64748b",
+    marginBottom: 16,
+    fontWeight: "500",
+  },
+  quickOptionsRow: {
+    flexDirection: "row",
+    gap: 20,
+  },
+  quickOptionButton: {
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#EAE7D6",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#B0D4B8",
+    minWidth: 80,
+  },
+  quickOptionText: {
+    fontSize: 12,
+    color: "#5D7B6F",
+    marginTop: 8,
+    fontWeight: "500",
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    alignItems: "center",
+    gap: 16,
+  },
+  registerButton: {
+    paddingVertical: 8,
+  },
+  registerButtonText: {
+    fontSize: 16,
+    color: "#64748b",
+  },
+  registerButtonTextBold: {
+    color: "#5D7B6F",
+    fontWeight: "600",
+  },
+  versionText: {
+    fontSize: 12,
+    color: "#94a3b8",
   },
 });

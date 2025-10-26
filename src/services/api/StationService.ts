@@ -22,16 +22,20 @@ function normalizeStation(s: any): StationDto {
       `${s.operatingHours?.open ?? "07:00"} - ${
         s.operatingHours?.close ?? "21:00"
       }`,
-    available: s.available ?? s.availableSlots ?? 0,
-    capacity: s.capacity ?? s.totalSlots ?? 0,
-    charging: s.charging ?? 0,
-    maintenance: s.maintenance ?? 0,
+    // Map inventory data from API
+    available: s.inventory?.available ?? s.available ?? s.availableSlots ?? 0,
+    capacity: s.inventory?.total ?? s.capacity ?? s.totalSlots ?? 0,
+    charging: s.inventory?.charging ?? s.charging ?? 0,
+    maintenance: s.inventory?.maintenance ?? s.maintenance ?? 0,
+    reserved: s.inventory?.reserved ?? s.reserved ?? 0,
     type: s.type ?? "station",
     rating: s.rating ?? undefined,
     distanceKm: s.distance_km ?? s.distanceKm ?? undefined,
     // Additional fields from API
     city: s.city ?? undefined,
     status: s.status ?? undefined,
+    image_url: s.image_url ?? undefined,
+    staff: s.staff ?? undefined,
     distance_m: s.distance_m ?? undefined,
     duration_seconds: s.duration_seconds ?? undefined,
     duration_minutes: s.duration_minutes ?? undefined,

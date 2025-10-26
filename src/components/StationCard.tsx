@@ -121,6 +121,11 @@ export default function StationCard({
 
       <Text style={styles.address}>{station.address}</Text>
       {station.city && <Text style={styles.city}>📍 {station.city}</Text>}
+      {station.staff && (
+        <Text style={styles.staffInfo}>
+          👤 Nhân viên: {station.staff.name} ({station.staff.phone})
+        </Text>
+      )}
 
       <View style={styles.info}>
         <View
@@ -271,6 +276,12 @@ const styles = StyleSheet.create({
     color: styleTokens.colors.textMuted,
   },
   city: {
+    ...styleTokens.typography.small,
+    color: styleTokens.colors.textMuted,
+    marginBottom: styleTokens.spacing.sm,
+    fontStyle: "italic",
+  },
+  staffInfo: {
     ...styleTokens.typography.small,
     color: styleTokens.colors.textMuted,
     marginBottom: styleTokens.spacing.sm,

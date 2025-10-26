@@ -22,12 +22,12 @@ import StationCard from "../../../components/StationCard";
 import BottomSheetHandle from "../../../components/BottomSheetHandle";
 
 // Data & Utils
-import { stations } from "../../../data/stations";
 import { useTranslation } from "react-i18next";
 import { Station, FilterType, MapViewMode } from "../../../types/station";
 import { distanceKm, formatDistance } from "../../../utils/geo";
 import { styleTokens } from "../../../styles/tokens";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useStations } from "../hooks/useStations";
 
 const { width, height } = Dimensions.get("window");
 
@@ -45,37 +45,16 @@ export default function StationMapScreen() {
     lat: number;
     lng: number;
   } | null>(null);
-  const [filteredStations, setFilteredStations] = useState<Station[]>(stations);
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   const [sheetIndex, setSheetIndex] = useState(0); // track current bottom sheet index
 
-  // Bottom sheet snap points
-  const snapPoints = ["15%", "45%", "85%", "100%"]; // added full height
+  // Use stations hook with user location
+  const { data: stations = [], isLoading, error } = useStations({
+    radius: 20, // 20km radius
+  });
 
-  useEffect(() => {
-    requestLocationPermission();
-  }, []);
-
-  useEffect(() => {
-    filterStations();
-  }, [selectedFilter, userLocation]);
-
-  const requestLocationPermission = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        });
-      }
-    } catch (error) {
-      console.error("Error getting location:", error);
-    }
-  };
-
-  const filterStations = () => {
+  // Filter stations based on selected filter
+  const filteredStations = React.useMemo(() => {
     let filtered = stations;
 
     // Filter by type
@@ -98,8 +77,31 @@ export default function StationMapScreen() {
         .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
     }
 
-    setFilteredStations(filtered);
+    return filtered;
+  }, [stations, selectedFilter, userLocation]);
+
+  // Bottom sheet snap points
+  const snapPoints = ["15%", "45%", "85%", "100%"]; // added full height
+
+  useEffect(() => {
+    requestLocationPermission();
+  }, []);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting location:", error);
+    }
   };
+
 
   const handleMarkerPress = (station: Station) => {
     setSelectedStation(station);
@@ -201,8 +203,8 @@ export default function StationMapScreen() {
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
-          latitude: 10.8454,
-          longitude: 106.8232,
+          latitude: userLocation?.lat || 10.8454,
+          longitude: userLocation?.lng || 106.8232,
           latitudeDelta: 0.02,
           longitudeDelta: 0.02,
         }}
@@ -248,7 +250,7 @@ export default function StationMapScreen() {
               {station.available > 0 && (
                 <View style={styles.markerBadge}>
                   <Text style={styles.markerBadgeText}>
-                    {station.available}
+                    {station.available}/{station.capacity}
                   </Text>
                 </View>
               )}
@@ -324,14 +326,24 @@ export default function StationMapScreen() {
             <Text style={styles.listTitle}>
               {t("map.allStations")} ({filteredStations.length})
             </Text>
-            {filteredStations.map((station) => (
-              <StationCard
-                key={station.id}
-                station={station}
-                isSelected={selectedStation?.id === station.id}
-                onPress={() => handleCardPress(station)}
-              />
-            ))}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Đang tải trạm...</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Không thể tải danh sách trạm</Text>
+              </View>
+            ) : (
+              filteredStations.map((station) => (
+                <StationCard
+                  key={station.id}
+                  station={station}
+                  isSelected={selectedStation?.id === station.id}
+                  onPress={() => handleCardPress(station)}
+                />
+              ))
+            )}
           </View>
         </BottomSheetScrollView>
       </BottomSheet>
@@ -430,5 +442,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: styleTokens.colors.textMuted,
     fontWeight: "500",
+  },
+  loadingContainer: {
+    padding: styleTokens.spacing.lg,
+    alignItems: "center",
+  },
+  loadingText: {
+    color: styleTokens.colors.textMuted,
+    fontSize: 16,
+  },
+  errorContainer: {
+    padding: styleTokens.spacing.lg,
+    alignItems: "center",
+  },
+  errorText: {
+    color: styleTokens.colors.danger,
+    fontSize: 16,
   },
 });

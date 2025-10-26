@@ -24,6 +24,7 @@ import VehicleService, {
 import AuthLayout from "../components/AuthLayout";
 import { ThemedButton, ThemedCard } from "../../../components";
 import { useTheme } from "../../../theme/ThemeProvider";
+import { useAuthStore } from "../../../store/authStore";
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<AuthStackParamList, "VehicleSetup">,
@@ -32,6 +33,7 @@ type Props = CompositeScreenProps<
 
 export default function VehicleSetupScreen({ navigation }: Props) {
   const theme = useTheme();
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [name, setName] = useState("");
   const [vin, setVin] = useState("");
@@ -190,6 +192,12 @@ export default function VehicleSetupScreen({ navigation }: Props) {
           ]
         );
         return;
+      }
+
+      // Update authStore with the new vehicle data
+      const updatedUser = await AuthService.getCurrentUser();
+      if (updatedUser) {
+        setUser(updatedUser);
       }
 
       Alert.alert("Thành công", `Đã đăng ký xe ${name}!`, [

@@ -93,11 +93,11 @@ export default function ProfileScreen({ navigation }: Props) {
 
   // Use real user data or fallback to mock
   const displayName = user
-    ? `${user.firstName} ${user.lastName}`.trim() || user.email
-    : mockUser.name;
+    ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User'
+    : mockUser.name || 'User';
   const displayPhone = user?.phone || mockUser.phone;
   const displayEmail = user?.email || mockUser.email;
-  const userInitial = displayName.charAt(0).toUpperCase();
+  const userInitial = (displayName && displayName.length > 0) ? displayName.charAt(0).toUpperCase() : 'U';
   const vehicle = user ? (user as any).vehicle : null;
 
   const handleLogout = () => {

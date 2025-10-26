@@ -11,17 +11,46 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from "../../../theme";
+import StationSessionService from "../../../services/api/StationSessionService";
 
 interface SwapSessionScreenProps {
   navigation: any;
+  route: {
+    params: {
+      sessionData?: {
+        id: string;
+        session_token: string;
+        station_id: string;
+        user_id: string;
+        status: string;
+        expires_at: string;
+        station?: {
+          id: string;
+          name: string;
+          address: string;
+          city: string;
+          lat: string;
+          lng: string;
+          status: string;
+        };
+      };
+      kioskId?: string;
+      stationId?: string;
+    };
+  };
 }
 
 export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
   navigation,
+  route,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [progressAnimation] = useState(new Animated.Value(0));
   const [isSwapping, setIsSwapping] = useState(false);
+
+  // Debug log to check station data
+  console.log("SwapSessionScreen - sessionData:", route.params?.sessionData);
+  console.log("SwapSessionScreen - station:", route.params?.sessionData?.station);
 
   const swapSteps = [
     {
@@ -101,6 +130,70 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
     ]);
   };
 
+  const handleEndSession = async () => {
+    if (!route.params?.sessionData?.id) {
+      Alert.alert("Lỗi", "Không tìm thấy thông tin phiên làm việc");
+      return;
+    }
+
+    Alert.alert(
+      "Kết thúc phiên",
+      "Bạn có chắc muốn kết thúc phiên làm việc tại trạm này?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Kết thúc",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await StationSessionService.endSession(
+                route.params.sessionData!.id,
+                route.params.sessionData!.session_token
+              );
+              
+              console.log("End session response:", JSON.stringify(result, null, 2));
+              
+              // Check if end session was successful
+              const isSuccess = (result.data as any)?.success === true || result.success;
+              
+              if (isSuccess) {
+                Alert.alert(
+                  "Thành công",
+                  "Đã kết thúc phiên làm việc",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => navigation.navigate("MainTabs"),
+                    },
+                  ]
+                );
+              } else {
+                // Check if session was already ended (e.g., at kiosk)
+                const errorMessage = result.error?.message || "Không thể kết thúc phiên";
+                if (errorMessage.includes("already ended") || errorMessage.includes("not found") || errorMessage.includes("inactive")) {
+                  Alert.alert(
+                    "Phiên đã kết thúc",
+                    "Phiên làm việc đã được kết thúc tại kiosk. Bạn sẽ được chuyển về trang chủ.",
+                    [
+                      {
+                        text: "OK",
+                        onPress: () => navigation.navigate("MainTabs"),
+                      },
+                    ]
+                  );
+                } else {
+                  Alert.alert("Lỗi", errorMessage);
+                }
+              }
+            } catch (error: any) {
+              Alert.alert("Lỗi", error.message || "Có lỗi xảy ra");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const currentStepData = swapSteps[currentStep];
   const progressWidth = progressAnimation.interpolate({
     inputRange: [0, 1],
@@ -118,80 +211,29 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
         <View style={styles.placeholder} />
       </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <Animated.View
-            style={[styles.progressFill, { width: progressWidth }]}
-          />
+      {/* Success Message */}
+      <View style={styles.successContainer}>
+        <View style={styles.successIcon}>
+          <Text style={styles.checkmarkIcon}>✓</Text>
         </View>
-        <Text style={styles.progressText}>
-          Bước {currentStep + 1} / {swapSteps.length}
+        <Text style={styles.successTitle}>Đăng nhập thành công!</Text>
+        <Text style={styles.successSubtitle}>
+          Đang đổi pin tại trạm {route.params?.sessionData?.station?.name || "Station fallback name"}
         </Text>
-      </View>
-
-      {/* Current Step */}
-      <View style={styles.stepContainer}>
-        <View style={styles.stepIconContainer}>
-          <MaterialCommunityIcons
-            name="battery-charging-medium"
-            size={64}
-            color={theme.colors.primary}
-          />
-        </View>
-
-        <Text style={styles.stepTitle}>{currentStepData.title}</Text>
-        <Text style={styles.stepSubtitle}>{currentStepData.subtitle}</Text>
-
-        {/* Loading indicator */}
-        {isSwapping && (
-          <View style={styles.loadingContainer}>
-            <Animated.View
-              style={[
-                styles.loadingDot,
-                {
-                  opacity: progressAnimation.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0.3, 1, 0.3],
-                  }),
-                },
-              ]}
-            />
-            <Text style={styles.loadingText}>
-              {currentStep === swapSteps.length - 1
-                ? "Hoàn thành!"
-                : "Đang xử lý..."}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Station Info */}
       <View style={styles.stationInfo}>
         <Text style={styles.stationLabel}>Trạm đổi pin</Text>
-        <Text style={styles.stationName}>Vincom Bà Triệu</Text>
-        <Text style={styles.stationAddress}>
-          191 Bà Triệu, Hai Bà Trưng, Hà Nội
+        <Text style={styles.stationName}>
+          {route.params?.sessionData?.station?.name || "Station fallback name"}
         </Text>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionContainer}>
-        {!isSwapping ? (
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={handleStartSwap}
-          >
-            <Text style={styles.startButtonText}>Bắt đầu đổi pin</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={handleCancelSwap}
-          >
-            <Text style={styles.cancelButtonText}>Hủy</Text>
-          </TouchableOpacity>
-        )}
+        <Text style={styles.stationAddress}>
+          {route.params?.sessionData?.station?.address || "Station fallback address"}
+        </Text>
+        <Text style={styles.stationCity}>
+          {route.params?.sessionData?.station?.city || "Station fallback city"}
+        </Text>
       </View>
 
       {/* Steps List */}
@@ -229,6 +271,18 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
           </View>
         ))}
       </View>
+      
+      {/* End Session Button - Fixed at bottom */}
+      {route.params?.sessionData && (
+        <View style={styles.endSessionContainer}>
+          <TouchableOpacity
+            style={styles.endSessionButton}
+            onPress={handleEndSession}
+          >
+            <Text style={styles.endSessionButtonText}>Kết thúc phiên</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -258,70 +312,39 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
-  progressContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: theme.colors.border.default,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: theme.colors.primary,
-  },
-  progressText: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  stepContainer: {
+  successContainer: {
+    backgroundColor: theme.colors.success,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    padding: 20,
+    borderRadius: 12,
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 32,
   },
-  stepIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: theme.colors.surface.elevated,
+  successIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
+    marginBottom: 12,
   },
-  stepTitle: {
-    fontSize: 20,
+  checkmarkIcon: {
+    fontSize: 24,
+    color: theme.colors.success,
+    fontWeight: "bold",
+  },
+  successTitle: {
+    fontSize: 18,
     fontWeight: "600",
-    color: theme.colors.text.primary,
-    textAlign: "center",
-    marginBottom: 8,
+    color: "#fff",
+    marginBottom: 4,
   },
-  stepSubtitle: {
+  successSubtitle: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: "#fff",
     textAlign: "center",
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    alignItems: "center",
-    marginTop: 20,
-  },
-  loadingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.primary,
-    marginBottom: 8,
-  },
-  loadingText: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    fontWeight: "500",
+    opacity: 0.9,
   },
   stationInfo: {
     backgroundColor: theme.colors.surface.elevated,
@@ -345,35 +368,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text.secondary,
   },
-  actionContainer: {
+  stationCity: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
+  },
+  endSessionButton: {
+    backgroundColor: theme.colors.warning,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  endSessionButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  endSessionContainer: {
     paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  startButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  startButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.error,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    paddingVertical: 12,
+    backgroundColor: theme.colors.surface.default,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.default,
   },
   stepsList: {
     flex: 1,
     paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   stepItem: {
     flexDirection: "row",

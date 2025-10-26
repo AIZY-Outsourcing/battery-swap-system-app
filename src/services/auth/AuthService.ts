@@ -338,6 +338,58 @@ class AuthService {
     return user;
   }
 
+  /**
+   * Verify 2FA with PIN or biometric
+   * POST /api/v1/auth/verify-2fa
+   */
+  async verify2FA(payload: { type: "pin" | "biometric"; pin?: string }): Promise<ApiResponse<{ verified: boolean }>> {
+    try {
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇢ POST", `${this.baseUrl}/verify-2fa`, {
+          type: payload.type,
+          pin: payload.pin ? "***" : undefined,
+        });
+      }
+
+      const res = await api.post(`${this.baseUrl}/verify-2fa`, payload);
+      
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] ⇠ POST", `${this.baseUrl}/verify-2fa`, "→", res.status);
+      }
+
+      const body: any = res.data;
+      const root: any = body?.data?.data ?? body?.data ?? body;
+
+      return {
+        success: root.success || true,
+        data: { verified: root.verified || true },
+      };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const respData = error?.response?.data;
+      const message = respData?.message || respData?.error || "2FA verification failed";
+
+      if (AuthService.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] 2FA verification failed", {
+          status,
+          respData,
+          errorMessage: error?.message,
+        });
+      }
+
+      let code = "2FA_VERIFY_FAILED";
+      if (status === 401) code = "2FA_VERIFY_INVALID";
+
+      return {
+        success: false,
+        error: { code, message },
+      };
+    }
+  }
+
   async getMe(): Promise<User | null> {
     try {
       if (AuthService.DEBUG) {

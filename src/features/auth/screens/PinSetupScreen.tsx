@@ -40,23 +40,16 @@ export default function PinSetupScreen({ navigation, route }: Props) {
         return;
       }
 
-      Alert.alert("Thành công", "Đã tạo mã PIN bảo mật!", [
-        {
-          text: "Tiếp tục",
-          onPress: async () => {
-            // Check if vehicle setup needed
-            const hasVehicle = await AuthService.hasCompletedVehicleSetup();
-            if (!hasVehicle) {
-              navigation.replace("VehicleSetup");
-            } else {
-              navigation.getParent()?.reset({
-                index: 0,
-                routes: [{ name: "AppStack" } as any],
-              });
-            }
-          },
-        },
-      ]);
+      // Check if vehicle setup needed
+      const hasVehicle = await AuthService.hasCompletedVehicleSetup();
+      if (!hasVehicle) {
+        navigation.replace("VehicleSetup");
+      } else {
+        navigation.getParent()?.reset({
+          index: 0,
+          routes: [{ name: "AppStack" } as any],
+        });
+      }
     } catch (error) {
       Alert.alert("Lỗi", "Không thể tạo mã PIN. Vui lòng thử lại.");
     } finally {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   View,
@@ -7,23 +7,65 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import {
   mockSwapHistory,
-  mockPaymentHistory,
   mockSubscriptions,
   type SwapTransaction,
-  type PaymentHistory,
   type Subscription,
 } from "../../../data/mockData";
 import { styleTokens } from "../../../styles/tokens";
+import { orderService, type Order } from "../../../services/api/OrderService";
 
 type TabKey = "swap" | "payment" | "subscription";
 
 export default function HistoryScreen() {
   const [tab, setTab] = useState<TabKey>("swap");
   const { t } = useTranslation();
+  
+  // Order API state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [refreshingOrders, setRefreshingOrders] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
+  // Fetch orders from API
+  const fetchOrders = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshingOrders(true);
+    } else {
+      setLoadingOrders(true);
+    }
+    setOrderError(null);
+
+    try {
+      const response = await orderService.getOrderHistory({
+        page: 1,
+        limit: 50,
+        sortBy: "created_at",
+        sortOrder: "desc",
+        status: "success",
+      });
+
+      if (response.success && response.data) {
+        setOrders(response.data.data);
+      } else {
+        setOrderError(response.error?.message || "Failed to fetch orders");
+      }
+    } catch (error: any) {
+      setOrderError(error.message || "Failed to fetch orders");
+    } finally {
+      setLoadingOrders(false);
+      setRefreshingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   // Derive & sort data (newest first)
   const swapData = useMemo(
@@ -35,10 +77,10 @@ export default function HistoryScreen() {
   );
   const paymentData = useMemo(
     () =>
-      [...mockPaymentHistory].sort(
-        (a, b) => b.paymentDate.getTime() - a.paymentDate.getTime()
+      [...orders].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ),
-    []
+    [orders]
   );
   const subscriptionData = useMemo(
     () =>
@@ -165,22 +207,29 @@ export default function HistoryScreen() {
     );
   };
 
-  const renderPayment = ({ item }: { item: PaymentHistory }) => {
+  const renderPayment = ({ item }: { item: Order }) => {
+    const orderDate = new Date(item.created_at);
+    const amount = parseInt(item.total_amount.toString());
+    
     return (
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.title}>{item.description}</Text>
+            <Text style={styles.title}>
+              {item.type === "package" 
+                ? `Gói ${item.package?.name || "Package"}` 
+                : `${item.quantity} lượt đổi`}
+            </Text>
             <Text style={styles.subTime}>
-              {item.paymentDate.toLocaleDateString("vi-VN")} •{" "}
-              {item.paymentDate.toLocaleTimeString("vi-VN", {
+              {orderDate.toLocaleDateString("vi-VN")} •{" "}
+              {orderDate.toLocaleTimeString("vi-VN", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
             </Text>
           </View>
           <View style={styles.rightAlign}>
-            <Text style={styles.amount}>{formatCurrency(item.amount)}</Text>
+            <Text style={styles.amount}>{formatCurrency(amount)}</Text>
             <View
               style={[
                 styles.badge,
@@ -194,23 +243,29 @@ export default function HistoryScreen() {
         <View style={styles.inlineMeta}>
           <Text style={styles.metaLabel}>{t("history.typeLabel")}:</Text>
           <Text style={styles.metaValue}>
-            {item.type === "pay-per-swap"
-              ? t("history.swapTab")
-              : item.type === "subscription"
+            {item.type === "package"
               ? t("history.subscriptionTab")
-              : t("history.typeLabel")}
+              : item.type === "single"
+              ? t("history.swapTab")
+              : item.type}
           </Text>
         </View>
-        {item.invoiceId && (
-          <View style={styles.inlineMeta}>
-            <Text style={styles.metaLabel}>{t("history.invoiceLabel")}:</Text>
-            <Text style={styles.metaValue}>{item.invoiceId}</Text>
-          </View>
-        )}
         <View style={styles.inlineMeta}>
           <Text style={styles.metaLabel}>{t("history.methodLabel")}:</Text>
-          <Text style={styles.metaValue}>{item.paymentMethod}</Text>
+          <Text style={styles.metaValue}>Bank Transfer</Text>
         </View>
+        {item.package && (
+          <View style={styles.inlineMeta}>
+            <Text style={styles.metaLabel}>Package:</Text>
+            <Text style={styles.metaValue}>{item.package.name}</Text>
+          </View>
+        )}
+        {item.type === "single" && (
+          <View style={styles.inlineMeta}>
+            <Text style={styles.metaLabel}>Quantity:</Text>
+            <Text style={styles.metaValue}>{item.quantity} swaps</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -328,7 +383,19 @@ export default function HistoryScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-      {currentData.length === 0 ? (
+      {tab === "payment" && loadingOrders ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5D7B6F" />
+          <Text style={styles.loadingText}>Loading orders...</Text>
+        </View>
+      ) : tab === "payment" && orderError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{orderError}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchOrders()}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : currentData.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyTitle}>{t("history.emptyTitle")}</Text>
           <Text style={styles.emptySubtitle}>{t("history.emptySubtitle")}</Text>
@@ -340,6 +407,15 @@ export default function HistoryScreen() {
           renderItem={renderer}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            tab === "payment" ? (
+              <RefreshControl
+                refreshing={refreshingOrders}
+                onRefresh={() => fetchOrders(true)}
+                colors={["#5D7B6F"]}
+              />
+            ) : undefined
+          }
         />
       )}
     </SafeAreaView>
@@ -504,5 +580,39 @@ const styles = StyleSheet.create({
     color: "#64748b",
     textAlign: "center",
     lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: styleTokens.spacing.xl,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#64748b",
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: styleTokens.spacing.xl,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ef4444",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#5D7B6F",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

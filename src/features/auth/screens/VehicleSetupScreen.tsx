@@ -200,17 +200,11 @@ export default function VehicleSetupScreen({ navigation }: Props) {
         setUser(updatedUser);
       }
 
-      Alert.alert("Thành công", `Đã đăng ký xe ${name}!`, [
-        {
-          text: "Hoàn thành & Vào App",
-          onPress: () => {
-            navigation.getParent()?.reset({
-              index: 0,
-              routes: [{ name: "AppStack" } as any],
-            });
-          },
-        },
-      ]);
+      // Navigate to main app
+      navigation.getParent()?.reset({
+        index: 0,
+        routes: [{ name: "AppStack" } as any],
+      });
     } catch (error) {
       if (__DEV__) {
         console.log("[VehicleSetupScreen] handleSubmit error:", error);

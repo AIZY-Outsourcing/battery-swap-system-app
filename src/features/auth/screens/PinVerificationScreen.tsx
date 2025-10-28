@@ -61,7 +61,7 @@ export default function PinVerificationScreen({
         type: "pin",
         pin: pin,
       });
-      console.log(verifyRes);
+      console.log("ahsdhasdhashdahsdhasdhashdhas",verifyRes);
       if (!verifyRes.success) {
         Alert.alert("Lỗi", verifyRes.error?.message || "PIN không đúng");
         return;
@@ -72,25 +72,36 @@ export default function PinVerificationScreen({
         session_token: sessionToken,
       });
 
-      // let parsedData = authRes.data;
-      // if (typeof authRes.data === "string") {
-      //   try {
-      //     parsedData = JSON.parse(authRes.data);
-      //   } catch (e) {
-      //     console.error("Failed to parse authRes.data:", e);
-      //   }
-      // }
-      // const sessionData = (parsedData as any)?.data;
-      // const isSuccess = (parsedData as any)?.success === true && sessionData;
+      console.log("Auth response:", JSON.stringify(authRes, null, 2));
 
-      console.log(authRes);
+      // Parse the response - authRes.data might be a JSON string
+      let parsedData = authRes.data;
+      if (typeof authRes.data === "string") {
+        try {
+          parsedData = JSON.parse(authRes.data);
+        } catch (e) {
+          console.error("Failed to parse authRes.data:", e);
+        }
+      }
 
-      // Success! Navigate to SwapSession
-      navigation.navigate("SwapSession", {
-        sessionData: authRes.data,
-        kioskId,
-        stationId,
-      });
+      console.log("Parsed data:", parsedData);
+
+      // Handle the actual response structure: { data: { success: true, data: {...} } }
+      const sessionData = (parsedData as any)?.data;
+      const isSuccess = (parsedData as any)?.success === true && sessionData;
+
+      console.log("Session data:", sessionData);
+      console.log("Is success:", isSuccess);
+
+      if (isSuccess) {
+        // Success! Navigate to SwapSession
+        console.log("Navigating to SwapSession with data:", sessionData);
+        navigation.navigate("SwapSession", {
+          sessionData: sessionData,
+          kioskId: sessionData.station_id,
+          stationId: sessionData.station_id,
+        });
+      }
     } catch (error: any) {
       Alert.alert("Lỗi", error.message || "Có lỗi xảy ra");
     } finally {

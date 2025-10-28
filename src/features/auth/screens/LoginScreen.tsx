@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTheme } from "../../../theme/ThemeProvider";
@@ -40,13 +40,9 @@ export default function LoginScreen({ navigation }: Props) {
       password === "demo123"
     ) {
       track({ name: "login_success" });
-      return Alert.alert("Thành công", "Đăng nhập demo", [
-        {
-          text: "Tiếp tục",
-          onPress: () =>
-            navigation.navigate("VehicleSetup", { userId: "demo" }),
-        },
-      ]);
+      // Navigate directly without alert
+      navigation.navigate("VehicleSetup", { userId: "demo" });
+      return;
     }
 
     setIsLoading(true);
@@ -79,52 +75,27 @@ export default function LoginScreen({ navigation }: Props) {
 
       // Check if email is verified from API response
       if (!user.emailVerified) {
-        Alert.alert("Yêu cầu xác minh", "Vui lòng xác minh email trước.", [
-          {
-            text: "Xác minh",
-            onPress: () => navigation.replace("EmailVerification" as any),
-          },
-        ]);
+        navigation.replace("EmailVerification" as any);
         return;
       }
 
       // Check if PIN setup is needed
       if (needsPinSetup) {
-        Alert.alert("Tạo mã PIN", "Vui lòng tạo mã PIN 6 số để bảo mật.", [
-          {
-            text: "Tạo PIN",
-            onPress: () => navigation.replace("PinSetup"),
-          },
-        ]);
+        navigation.replace("PinSetup");
         return;
       }
 
       // Check if vehicle setup is needed
       if (needsVehicleSetup) {
-        Alert.alert(
-          "Thành công",
-          `Chào mừng ${user.firstName}! Hãy thiết lập phương tiện.`,
-          [
-            {
-              text: "Thiết lập xe",
-              onPress: () => navigation.replace("VehicleSetup"),
-            },
-          ]
-        );
+        navigation.replace("VehicleSetup");
         return;
       }
 
       // User is verified, has PIN, and has vehicle - go to main app
-      Alert.alert("Thành công", `Chào mừng trở lại ${user.firstName}!`, [
-        {
-          text: "Vào ứng dụng",
-          onPress: () =>
-            navigation.getParent()?.reset({
-              index: 0,
-              routes: [{ name: "AppStack" as any }],
-            }),
-        },
-      ]);
+      navigation.getParent()?.reset({
+        index: 0,
+        routes: [{ name: "AppStack" as any }],
+      });
     } catch (error: any) {
       Alert.alert("Lỗi", error.message || "Đăng nhập thất bại");
     } finally {
@@ -139,8 +110,14 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
@@ -237,14 +214,14 @@ export default function LoginScreen({ navigation }: Props) {
             <View style={styles.quickOptionsRow}>
               <TouchableOpacity 
                 style={styles.quickOptionButton}
-                onPress={() => Alert.alert("Thông tin", "Biometric login coming soon!")}
+                onPress={() => {/* Biometric login coming soon */}}
               >
                 <Ionicons name="finger-print" size={24} color="#5D7B6F" />
                 <Text style={styles.quickOptionText}>Vân tay</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.quickOptionButton}
-                onPress={() => Alert.alert("Thông tin", "Face ID login coming soon!")}
+                onPress={() => {/* Face ID login coming soon */}}
               >
                 <Ionicons name="scan" size={24} color="#5D7B6F" />
                 <Text style={styles.quickOptionText}>Face ID</Text>
@@ -266,6 +243,7 @@ export default function LoginScreen({ navigation }: Props) {
         </TouchableOpacity>
         <Text style={styles.versionText}>BSS v1.0.0</Text>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -274,6 +252,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   header: {
     flexDirection: "row",

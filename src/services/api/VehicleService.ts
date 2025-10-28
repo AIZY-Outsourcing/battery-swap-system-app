@@ -137,12 +137,12 @@ export async function createVehicleAndStore(
         // Convert VehicleRecord to User vehicle format
         const vehicleData = {
           id: result.data.id,
-          make: result.data.name.split(' ')[0] || 'Unknown', // Extract make from name
-          model: result.data.name,
-          year: result.data.year,
-          licensePlate: result.data.plateNumber,
-          vin: result.data.vin,
-          batteryType: result.data.batteryTypeId,
+          make: result.data.name ? result.data.name.split(' ')[0] : 'Unknown', // Extract make from name
+          model: result.data.name || 'Unknown Model',
+          year: result.data.year || new Date().getFullYear().toString(),
+          licensePlate: result.data.plateNumber || '',
+          vin: result.data.vin || '',
+          batteryType: result.data.batteryTypeId || '',
         };
 
         // Add to vehicles array if it exists, otherwise create it

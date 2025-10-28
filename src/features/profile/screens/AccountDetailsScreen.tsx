@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../../navigation/types";
@@ -13,6 +15,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuthStore } from "../../../store/authStore";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { swapCreditsService, type SwapCredits, type ActiveSubscriptionPackage } from "../../../services/api/SwapCreditsService";
 
 type Props = NativeStackScreenProps<AppStackParamList, "AccountDetails">;
 
@@ -20,7 +23,58 @@ export default function AccountDetailsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const storeCredits = useAuthStore((s) => s.user?.swapCredits);
-  // Mock data for demo
+  
+  // Swap credits API state
+  const [swapCredits, setSwapCredits] = useState<SwapCredits | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(false);
+  const [creditsError, setCreditsError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Fetch swap credits
+  const fetchSwapCredits = async () => {
+    setLoadingCredits(true);
+    setCreditsError(null);
+
+    try {
+      const response = await swapCreditsService.getMySwapCredits();
+      
+      if (response.success && response.data) {
+        setSwapCredits(response.data);
+      } else {
+        setCreditsError(response.error?.message || "Failed to fetch credits");
+      }
+    } catch (error: any) {
+      setCreditsError(error.message || "Failed to fetch credits");
+    } finally {
+      setLoadingCredits(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchSwapCredits();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchSwapCredits();
+  }, []);
+
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  };
+
+  // Format VND currency
+  const formatVnd = (amount: string | number) => {
+    const numAmount = typeof amount === "string" ? parseInt(amount) : amount;
+    return numAmount.toLocaleString('vi-VN') + 'đ';
+  };
   const accountData = {
     singleSwaps: {
       count: 5,
@@ -100,7 +154,18 @@ export default function AccountDetailsScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       {/* Header removed: using native header from stack */}
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#5D7B6F"]}
+            tintColor="#5D7B6F"
+          />
+        }
+      >
         {/* Summary card */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
@@ -114,7 +179,13 @@ export default function AccountDetailsScreen({ navigation }: Props) {
               </View>
               <Text style={styles.summaryLabel}>{t("credits.single")}</Text>
               <Text style={styles.summaryValue}>
-                {accountData.singleSwaps.count}
+                {loadingCredits ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : creditsError ? (
+                  "—"
+                ) : (
+                  swapCredits?.remaining_credits || 0
+                )}
               </Text>
             </View>
             <View style={styles.dividerVertical} />
@@ -128,7 +199,13 @@ export default function AccountDetailsScreen({ navigation }: Props) {
               </View>
               <Text style={styles.summaryLabel}>{t("credits.package")}</Text>
               <Text style={styles.summaryValue}>
-                {accountData.packageSwaps.history[0]?.swapsLeft ?? 0}
+                {loadingCredits ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : creditsError ? (
+                  "—"
+                ) : (
+                  swapCredits?.total_remaining_quota_swaps || 0
+                )}
               </Text>
             </View>
           </View>
@@ -138,7 +215,7 @@ export default function AccountDetailsScreen({ navigation }: Props) {
         <View style={styles.section}>
           {renderSectionHeader(
             t("credits.singleSection"),
-            `${accountData.singleSwaps.count}`,
+            loadingCredits ? "..." : creditsError ? "—" : `${swapCredits?.remaining_credits || 0}`,
             "battery"
           )}
           <View style={styles.summaryGrid}>
@@ -146,14 +223,28 @@ export default function AccountDetailsScreen({ navigation }: Props) {
               <Text style={styles.summaryBoxLabel}>
                 {t("credits.remaining")}
               </Text>
-              <Text style={styles.summaryBoxValue}>{credits}</Text>
+              <Text style={styles.summaryBoxValue}>
+                {loadingCredits ? (
+                  <ActivityIndicator size="small" color="#5D7B6F" />
+                ) : creditsError ? (
+                  "—"
+                ) : (
+                  swapCredits?.remaining_credits || 0
+                )}
+              </Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryBoxLabel}>
                 {t("credits.usedThisMonth")}
               </Text>
               <Text style={styles.summaryBoxValue}>
-                {accountData.singleSwaps.count}
+                {loadingCredits ? (
+                  <ActivityIndicator size="small" color="#5D7B6F" />
+                ) : creditsError ? (
+                  "—"
+                ) : (
+                  swapCredits?.used_credits || 0
+                )}
               </Text>
             </View>
             <View style={styles.summaryBox}>
@@ -161,7 +252,15 @@ export default function AccountDetailsScreen({ navigation }: Props) {
                 {t("credits.lastTime")}
               </Text>
               <Text style={styles.summaryBoxValue}>
-                {accountData.singleSwaps.history[0]?.date.split(" ")[0] ?? "—"}
+                {loadingCredits ? (
+                  <ActivityIndicator size="small" color="#5D7B6F" />
+                ) : creditsError ? (
+                  "—"
+                ) : swapCredits?.latest_swap_credit?.created_at ? (
+                  formatDate(swapCredits.latest_swap_credit.created_at)
+                ) : (
+                  "—"
+                )}
               </Text>
             </View>
           </View>
@@ -171,40 +270,61 @@ export default function AccountDetailsScreen({ navigation }: Props) {
         <View style={styles.section}>
           {renderSectionHeader(
             t("credits.packageSection"),
-            `${accountData.packageSwaps.history[0]?.swapsLeft ?? 0}/${
-              accountData.packageSwaps.history[0]?.totalSwaps ?? 0
-            }`,
+            loadingCredits ? "..." : creditsError ? "—" : `${swapCredits?.total_remaining_quota_swaps || 0}`,
             "package-variant-closed"
           )}
-          {accountData.packageSwaps.history.map((package_) => (
-            <View key={package_.id} style={styles.packageItem}>
-              <View style={styles.packageHeader}>
-                <Text style={styles.packageName}>{package_.packageName}</Text>
-                <Text style={styles.packageStatus}>{t("credits.active")}</Text>
-              </View>
-              <View style={styles.packageDetails}>
-                <Text style={styles.packageInfo}>
-                  {t("credits.left")}: {package_.swapsLeft}/
-                  {package_.totalSwaps}
-                </Text>
-                <Text style={styles.packageExpiry}>
-                  {t("credits.expires")}: {package_.validUntil}
-                </Text>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${
-                          (package_.swapsLeft / package_.totalSwaps) * 100
-                        }%`,
-                      },
-                    ]}
-                  />
+          {loadingCredits ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#5D7B6F" />
+              <Text style={styles.loadingText}>Đang tải thông tin gói...</Text>
+            </View>
+          ) : creditsError ? (
+            <View style={styles.errorContainer}>
+              <MaterialCommunityIcons name="alert-circle" size={48} color="#ff6b6b" />
+              <Text style={styles.errorText}>Không thể tải thông tin gói</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={fetchSwapCredits}>
+                <Text style={styles.retryButtonText}>Thử lại</Text>
+              </TouchableOpacity>
+            </View>
+          ) : swapCredits?.active_subscription_packages && swapCredits.active_subscription_packages.length > 0 ? (
+            swapCredits.active_subscription_packages.map((pkg: ActiveSubscriptionPackage) => (
+              <View key={pkg.id} style={styles.packageItem}>
+                <View style={styles.packageHeader}>
+                  <Text style={styles.packageName}>{pkg.name}</Text>
+                  <Text style={styles.packageStatus}>{t("credits.active")}</Text>
+                </View>
+                <View style={styles.packageDetails}>
+                  <Text style={styles.packageInfo}>
+                    {t("credits.left")}: {pkg.remaining_quota_swaps}/{pkg.quota_swaps}
+                  </Text>
+                  <Text style={styles.packageExpiry}>
+                    {t("credits.expires")}: {formatDate(pkg.end_date)}
+                  </Text>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${(pkg.remaining_quota_swaps / pkg.quota_swaps) * 100}%`,
+                        },
+                      ]}
+                    />
+                  </View>
                 </View>
               </View>
+            ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="package-variant-closed" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>Chưa có gói đăng ký nào</Text>
+              <TouchableOpacity 
+                style={styles.buyPackageButton}
+                onPress={() => navigation.navigate("BuyPackage")}
+              >
+                <Text style={styles.buyPackageButtonText}>Mua gói ngay</Text>
+              </TouchableOpacity>
             </View>
-          ))}
+          )}
         </View>
 
         {/* Bottom spacing to avoid footer overlap (accounts for safe area) */}
@@ -384,6 +504,59 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   progressFill: { height: 6, backgroundColor: "#5D7B6F", borderRadius: 4 },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#666",
+  },
+  errorContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#ff6b6b",
+    textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: "#5D7B6F",
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  buyPackageButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#5D7B6F",
+    borderRadius: 8,
+  },
+  buyPackageButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   bottomSpacing: { height: 110 },
   footerActions: {
     position: "absolute",

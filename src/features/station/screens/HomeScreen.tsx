@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   View,
@@ -10,6 +10,7 @@ import {
   FlatList,
   SafeAreaView,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
@@ -22,6 +23,7 @@ import { useStations } from "../hooks/useStations";
 import { useAuthStore } from "../../../store/authStore";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { swapCreditsService, type SwapCredits } from "../../../services/api/SwapCreditsService";
 
 type DistanceOpt = 5 | 10 | 20;
 type BatteryOpt = "A" | "B" | "C" | "";
@@ -40,6 +42,11 @@ export default function HomeScreen({ navigation }: Props) {
   const [batteryType, setBatteryType] = useState<BatteryOpt>("");
   const [sort, setSort] = useState<SortOpt>("nearest");
   const credits = useAuthStore((s) => s.user?.swapCredits ?? 0);
+  
+  // Swap credits API state
+  const [swapCredits, setSwapCredits] = useState<SwapCredits | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(false);
+  const [creditsError, setCreditsError] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch, isRefetching } = useStations({
     battery_type: batteryType || undefined,
@@ -47,6 +54,30 @@ export default function HomeScreen({ navigation }: Props) {
     radius: 10, // 10km radius
   });
   const stations = data || [];
+
+  // Fetch swap credits
+  const fetchSwapCredits = async () => {
+    setLoadingCredits(true);
+    setCreditsError(null);
+
+    try {
+      const response = await swapCreditsService.getMySwapCredits();
+      
+      if (response.success && response.data) {
+        setSwapCredits(response.data);
+      } else {
+        setCreditsError(response.error?.message || "Failed to fetch credits");
+      }
+    } catch (error: any) {
+      setCreditsError(error.message || "Failed to fetch credits");
+    } finally {
+      setLoadingCredits(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSwapCredits();
+  }, []);
 
   const renderStationCard = ({ item }: { item: any }) => (
     <View style={styles.stationCard}>
@@ -170,18 +201,30 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={styles.transactionTypesContainer}>
             <View style={styles.walletItem}>
               <Text style={styles.walletLabel}>{t("home.wallet.single")}</Text>
-              <Text style={styles.walletAmount}>
-                5 {t("history.timesSuffix")}
-              </Text>
+              {loadingCredits ? (
+                <ActivityIndicator size="small" color="#5D7B6F" />
+              ) : creditsError ? (
+                <Text style={styles.walletAmountError}>—</Text>
+              ) : (
+                <Text style={styles.walletAmount}>
+                  {swapCredits?.remaining_credits || 0} {t("history.timesSuffix")}
+                </Text>
+              )}
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.walletItem}>
               <Text style={styles.walletLabel}>{t("home.wallet.package")}</Text>
-              <Text style={styles.walletAmount}>
-                20/30 {t("history.timesSuffix")}
-              </Text>
+              {loadingCredits ? (
+                <ActivityIndicator size="small" color="#5D7B6F" />
+              ) : creditsError ? (
+                <Text style={styles.walletAmountError}>—</Text>
+              ) : (
+                <Text style={styles.walletAmount}>
+                  {swapCredits?.total_remaining_quota_swaps || 0} {t("history.timesSuffix")}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -314,8 +357,11 @@ export default function HomeScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
+              refreshing={isRefetching || loadingCredits}
+              onRefresh={() => {
+                refetch();
+                fetchSwapCredits();
+              }}
               tintColor="#10b981"
               colors={["#10b981"]}
             />
@@ -454,6 +500,12 @@ const styles = StyleSheet.create({
   walletAmount: {
     fontSize: 14,
     color: "#ffffff",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  walletAmountError: {
+    fontSize: 14,
+    color: "#ff6b6b",
     fontWeight: "600",
     textAlign: "center",
   },

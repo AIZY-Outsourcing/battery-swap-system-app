@@ -8,20 +8,23 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../navigation/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { orderService } from "../../../services/api/OrderService";
+import { useNotification } from "../../../contexts/NotificationContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BuySwap">;
 
 const SWAP_OPTIONS = [
   { id: "1", swaps: 1, price: 25000 },
-  { id: "3", swaps: 3, price: 70000 },
-  { id: "5", swaps: 5, price: 110000 },
-  { id: "10", swaps: 10, price: 210000 },
+  { id: "3", swaps: 3, price: 75000 },
+  { id: "5", swaps: 5, price: 125000 },
+  { id: "10", swaps: 10, price: 250000 },
 ];
 
 export default function BuySwapScreen({ navigation, route }: Props) {
@@ -32,6 +35,8 @@ export default function BuySwapScreen({ navigation, route }: Props) {
     typeof preset === "number" ? String(preset) : null
   );
   const [customCount, setCustomCount] = useState<number | null>(null);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const { showNotification } = useNotification();
 
   const BASE_PRICE = 25000; // VND per swap when custom
 
@@ -76,18 +81,57 @@ export default function BuySwapScreen({ navigation, route }: Props) {
     setCustomCount(n);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!canPay) {
-      Alert.alert(
-        t("buySwap.alert.noSelection.title"),
-        t("buySwap.alert.noSelection.message")
-      );
+      showNotification({
+        type: "warning",
+        title: t("buySwap.alert.noSelection.title"),
+        message: t("buySwap.alert.noSelection.message"),
+        duration: 3000,
+      });
       return;
     }
-    navigation.navigate("PaymentScreen", {
-      amount: total,
-      type: "swap",
-    });
+
+    try {
+      setCreatingOrder(true);
+      
+      // Determine quantity
+      let quantity = 0;
+      if (selected) {
+        quantity = selected.swaps;
+      } else if (customCount && customCount > 0) {
+        quantity = customCount;
+      }
+
+      // Create order for single swaps
+      const orderResponse = await orderService.createOrder({
+        type: "single",
+        quantity: quantity,
+      });
+
+      if (orderResponse.success && orderResponse.data) {
+        // Navigate to order details screen with the created order data
+        navigation.navigate("OrderDetails", {
+          order: orderResponse.data,
+        });
+      } else {
+        showNotification({
+          type: "error",
+          title: t("buySwap.alert.orderFailed.title"),
+          message: orderResponse.error?.message || t("buySwap.alert.orderFailed.message"),
+          duration: 4000,
+        });
+      }
+    } catch (error) {
+      showNotification({
+        type: "error",
+        title: t("buySwap.alert.orderFailed.title"),
+        message: t("buySwap.alert.orderFailed.message"),
+        duration: 4000,
+      });
+    } finally {
+      setCreatingOrder(false);
+    }
   };
 
   return (
@@ -195,16 +239,22 @@ export default function BuySwapScreen({ navigation, route }: Props) {
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.payBtn, !canPay && styles.payBtnDisabled]}
-          disabled={!canPay}
+          style={[styles.payBtn, (!canPay || creatingOrder) && styles.payBtnDisabled]}
+          disabled={!canPay || creatingOrder}
           onPress={handleConfirm}
         >
-          <MaterialCommunityIcons
-            name="cart-outline"
-            size={18}
-            color="#ffffff"
-          />
-          <Text style={styles.payBtnText}>{t("buySwap.pay")}</Text>
+          {creatingOrder ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <MaterialCommunityIcons
+              name="cart-outline"
+              size={18}
+              color="#ffffff"
+            />
+          )}
+          <Text style={styles.payBtnText}>
+            {creatingOrder ? t("buySwap.creating") : t("buySwap.pay")}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

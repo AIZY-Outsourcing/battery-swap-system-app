@@ -70,16 +70,7 @@ export default function RegisterScreen({ navigation }: Props) {
       if (token && user) setAuth(token, user);
 
       // After signup, email verification is always needed
-      Alert.alert(
-        "Thành công",
-        `Đã tạo tài khoản. Email xác minh đã tự động gửi tới ${email}.`,
-        [
-          {
-            text: "Tiếp tục",
-            onPress: () => navigation.replace("EmailVerification" as any),
-          },
-        ]
-      );
+      navigation.replace("EmailVerification" as any);
     } catch (error: any) {
       Alert.alert("Lỗi", error.message || "Có lỗi xảy ra khi đăng ký");
     } finally {

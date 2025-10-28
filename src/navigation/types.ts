@@ -12,7 +12,7 @@ export type RootStackParamList = {
   // Swap screens
   QRScan: undefined;
   PinVerification: { sessionToken: string; kioskId: string; stationId: string };
-  SwapSession: { 
+  SwapSession: {
     sessionData?: {
       id: string;
       session_token: string;
@@ -37,6 +37,8 @@ export type RootStackParamList = {
   };
   BuySwap: { preset?: number } | undefined;
   BuyPackage: undefined;
+  OrderDetails: { order: any };
+  PaymentSuccess: { order: any };
   // Profile screens
   EditProfile: undefined;
   Settings: undefined;

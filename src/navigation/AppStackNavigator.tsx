@@ -24,6 +24,8 @@ import { PaymentHistoryScreen } from "../features/payment/screens/PaymentHistory
 import PaymentScreen from "../features/payment/screens/PaymentScreen";
 import BuySwapScreen from "../features/payment/screens/BuySwapScreen";
 import BuyPackageScreen from "../features/payment/screens/BuyPackageScreen";
+import OrderDetailsScreen from "../features/payment/screens/OrderDetailsScreen";
+import PaymentSuccessScreen from "../features/payment/screens/PaymentSuccessScreen";
 // Profile screens
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
 import SettingsScreen from "../features/profile/screens/SettingsScreen";
@@ -186,6 +188,24 @@ export default function AppStackNavigator() {
         options={{
           headerShown: true,
           title: t("buyPackage.header"),
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="OrderDetails"
+        component={OrderDetailsScreen}
+        options={{
+          headerShown: true,
+          title: t("order.details"),
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="PaymentSuccess"
+        component={PaymentSuccessScreen}
+        options={{
+          headerShown: true,
+          title: t("paymentSuccess.title"),
           headerBackTitle: t("common.back"),
         }}
       />

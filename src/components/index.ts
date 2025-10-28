@@ -7,3 +7,4 @@ export { default as LoadingSpinner } from "./ui/LoadingSpinner";
 export { Button as ThemedButton } from "./Button";
 export { Card as ThemedCard } from "./Card";
 export { Input } from "./Input";
+export { default as CustomNotification } from "./CustomNotification";

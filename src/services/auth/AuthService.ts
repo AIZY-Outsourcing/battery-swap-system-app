@@ -65,12 +65,13 @@ class AuthService {
       if (access) await setSecureToken(access);
       if (refresh) await setRefreshToken(refresh);
 
-      // Attach vehicle if returned by backend
-      const vehicle = root?.vehicle ?? null;
-      if (vehicle) {
-        // add vehicle to local user shape if backend provided
+      // Attach vehicles array if returned by backend
+      const vehicles = root?.vehicles ?? [];
+      if (vehicles && vehicles.length > 0) {
+        // Store vehicles array and also set the first vehicle as primary for backward compatibility
         try {
-          (user as any).vehicle = vehicle;
+          (user as any).vehicles = vehicles;
+          (user as any).vehicle = vehicles[0];
         } catch {}
       }
 
@@ -80,7 +81,7 @@ class AuthService {
       const is2faEnabled =
         apiUser.is_2fa_enabled ?? root?.requires_2fa ?? false;
       const needsPinSetup = is2faEnabled === false;
-      const needsVehicleSetup = vehicle == null;
+      const needsVehicleSetup = !vehicles || vehicles.length === 0;
 
       return {
         success: true,
@@ -168,6 +169,16 @@ class AuthService {
       const refresh = tokens?.refresh_token || root?.refresh_token;
       if (access) await setSecureToken(access);
       if (refresh) await setRefreshToken(refresh);
+
+      // Attach vehicles array if returned by backend
+      const vehicles = root?.vehicles ?? [];
+      if (vehicles && vehicles.length > 0) {
+        try {
+          (user as any).vehicles = vehicles;
+          (user as any).vehicle = vehicles[0];
+        } catch {}
+      }
+
       if (user)
         await AsyncStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
       return { success: true, data: { token: access, user } } as any;
@@ -313,7 +324,12 @@ class AuthService {
       if (!userData) return false;
 
       const user = JSON.parse(userData);
-      return !!(user.vehicle && user.vehicle.licensePlate);
+      // Check both vehicles array and legacy vehicle field
+      const hasVehicles = user.vehicles && user.vehicles.length > 0;
+      const hasLegacyVehicle =
+        user.vehicle &&
+        (user.vehicle.licensePlate || user.vehicle.plate_number);
+      return hasVehicles || hasLegacyVehicle;
     } catch (error) {
       return false;
     }
@@ -342,7 +358,10 @@ class AuthService {
    * Verify 2FA with PIN or biometric
    * POST /api/v1/auth/verify-2fa
    */
-  async verify2FA(payload: { type: "pin" | "biometric"; pin?: string }): Promise<ApiResponse<{ verified: boolean }>> {
+  async verify2FA(payload: {
+    type: "pin" | "biometric";
+    pin?: string;
+  }): Promise<ApiResponse<{ verified: boolean }>> {
     try {
       if (AuthService.DEBUG) {
         // eslint-disable-next-line no-console
@@ -353,10 +372,15 @@ class AuthService {
       }
 
       const res = await api.post(`${this.baseUrl}/verify-2fa`, payload);
-      
+
       if (AuthService.DEBUG) {
         // eslint-disable-next-line no-console
-        console.log("[auth] ⇠ POST", `${this.baseUrl}/verify-2fa`, "→", res.status);
+        console.log(
+          "[auth] ⇠ POST",
+          `${this.baseUrl}/verify-2fa`,
+          "→",
+          res.status
+        );
       }
 
       const body: any = res.data;
@@ -369,7 +393,8 @@ class AuthService {
     } catch (error: any) {
       const status = error?.response?.status;
       const respData = error?.response?.data;
-      const message = respData?.message || respData?.error || "2FA verification failed";
+      const message =
+        respData?.message || respData?.error || "2FA verification failed";
 
       if (AuthService.DEBUG) {
         // eslint-disable-next-line no-console

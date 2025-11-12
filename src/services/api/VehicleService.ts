@@ -16,6 +16,7 @@ export interface BackendVehicle {
   manufacturer_year: string; // backend uses string
   user_id: string;
   battery_type_id: string;
+  vehicle_model_id?: string;
 }
 
 // Payload for creation (user_id optional; will be auto injected if missing)
@@ -133,16 +134,19 @@ export async function createVehicleAndStore(
       const raw = await AsyncStorage.getItem("BSS_USER_DATA");
       if (raw) {
         const user = JSON.parse(raw);
-        
+
+        // Use the original payload name since backend might not return it properly
+        const vehicleName = result.data.name || payload.name || "Xe điệnnn";
+
         // Convert VehicleRecord to User vehicle format
         const vehicleData = {
           id: result.data.id,
-          make: result.data.name ? result.data.name.split(' ')[0] : 'Unknown', // Extract make from name
-          model: result.data.name || 'Unknown Model',
+          make: vehicleName.split(" ")[0] || "Unknown", // Extract make from name
+          model: vehicleName, // Use the full name as model
           year: result.data.year || new Date().getFullYear().toString(),
-          licensePlate: result.data.plateNumber || '',
-          vin: result.data.vin || '',
-          batteryType: result.data.batteryTypeId || '',
+          licensePlate: result.data.plateNumber || "",
+          vin: result.data.vin || "",
+          batteryType: result.data.batteryTypeId || "",
         };
 
         // Add to vehicles array if it exists, otherwise create it
@@ -150,16 +154,17 @@ export async function createVehicleAndStore(
           user.vehicles = [];
         }
         user.vehicles.push(vehicleData);
-        
+
         // Also keep the legacy vehicle field for backward compatibility
         user.vehicle = vehicleData;
-        
+
         await AsyncStorage.setItem("BSS_USER_DATA", JSON.stringify(user));
 
         if (__DEV__) {
           console.log("[VehicleService] Saved vehicle to user:", {
             vehicleId: result.data.id,
-            name: result.data.name,
+            name: vehicleName,
+            vehicleData: vehicleData,
             vehiclesCount: user.vehicles.length,
           });
         }
@@ -271,6 +276,203 @@ export async function getBatteryTypeOptions(): Promise<
     return {
       success: false,
       error: { code: "FETCH_BATTERY_TYPES_FAILED", message },
+    };
+  }
+}
+
+/**
+ * Get list of vehicles for current user
+ * GET /vehicles/me
+ */
+export async function getMyVehicles(): Promise<ApiResponse<BackendVehicle[]>> {
+  try {
+    if (__DEV__) {
+      console.log("[VehicleService.getMyVehicles] calling GET /vehicles/me");
+    }
+
+    const res = await api.get("/vehicles/me");
+
+    if (__DEV__) {
+      console.log("[VehicleService.getMyVehicles] success response:", res.data);
+    }
+
+    // Handle nested response structure
+    const body = res.data?.data?.data ?? res.data?.data ?? res.data;
+
+    // Backend returns object with numeric keys {"1": {...}, "2": {...}}
+    // Convert to array
+    let data: BackendVehicle[] = [];
+    if (Array.isArray(body)) {
+      data = body;
+    } else if (body && typeof body === "object") {
+      // Convert object to array
+      data = Object.values(body);
+    }
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.getMyVehicles] parsed vehicles:",
+        data.length,
+        "items"
+      );
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const respData = error?.response?.data;
+    const message =
+      respData?.message || respData?.error || "Failed to fetch vehicles";
+
+    if (__DEV__) {
+      console.log("[VehicleService.getMyVehicles] failure", {
+        status,
+        respData,
+      });
+    }
+
+    return {
+      success: false,
+      error: { code: "FETCH_VEHICLES_FAILED", message },
+    };
+  }
+}
+
+/**
+ * Get vehicle details by ID
+ * GET /vehicles/:id
+ */
+export async function getVehicleById(
+  vehicleId: string
+): Promise<ApiResponse<BackendVehicle>> {
+  try {
+    if (__DEV__) {
+      console.log(
+        `[VehicleService.getVehicleById] calling GET /vehicles/${vehicleId}`
+      );
+    }
+
+    const res = await api.get(`/vehicles/${vehicleId}`);
+
+    if (__DEV__) {
+      console.log(
+        "[VehicleService.getVehicleById] success response:",
+        res.data
+      );
+    }
+
+    const body = res.data?.data?.data ?? res.data?.data ?? res.data;
+    const data: BackendVehicle = body;
+
+    return { success: true, data };
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const respData = error?.response?.data;
+    const message =
+      respData?.message || respData?.error || "Failed to fetch vehicle";
+
+    if (__DEV__) {
+      console.log("[VehicleService.getVehicleById] failure", {
+        status,
+        respData,
+      });
+    }
+
+    let code = "FETCH_VEHICLE_FAILED";
+    if (status === 404) code = "VEHICLE_NOT_FOUND";
+    return {
+      success: false,
+      error: { code, message },
+    };
+  }
+}
+
+/**
+ * Update vehicle
+ * PUT /vehicles/:id
+ */
+export async function updateVehicle(
+  vehicleId: string,
+  payload: Partial<CreateVehiclePayload>
+): Promise<ApiResponse<BackendVehicle>> {
+  try {
+    if (__DEV__) {
+      console.log(
+        `[VehicleService.updateVehicle] calling PUT /vehicles/${vehicleId}`,
+        payload
+      );
+    }
+
+    const res = await api.put(`/vehicles/${vehicleId}`, payload);
+
+    if (__DEV__) {
+      console.log("[VehicleService.updateVehicle] success response:", res.data);
+    }
+
+    const data: BackendVehicle = res.data as BackendVehicle;
+    return { success: true, data };
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const respData = error?.response?.data;
+    const message =
+      respData?.message || respData?.error || "Failed to update vehicle";
+
+    if (__DEV__) {
+      console.log("[VehicleService.updateVehicle] failure", {
+        status,
+        respData,
+      });
+    }
+
+    let code = "VEHICLE_UPDATE_FAILED";
+    if (status === 400) code = "VEHICLE_UPDATE_INVALID";
+    if (status === 404) code = "VEHICLE_NOT_FOUND";
+    return {
+      success: false,
+      error: { code, message },
+    };
+  }
+}
+
+/**
+ * Delete vehicle
+ * DELETE /vehicles/:id
+ */
+export async function deleteVehicle(
+  vehicleId: string
+): Promise<ApiResponse<void>> {
+  try {
+    if (__DEV__) {
+      console.log(
+        `[VehicleService.deleteVehicle] calling DELETE /vehicles/${vehicleId}`
+      );
+    }
+
+    await api.delete(`/vehicles/${vehicleId}`);
+
+    if (__DEV__) {
+      console.log("[VehicleService.deleteVehicle] success");
+    }
+
+    return { success: true, data: undefined };
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const respData = error?.response?.data;
+    const message =
+      respData?.message || respData?.error || "Failed to delete vehicle";
+
+    if (__DEV__) {
+      console.log("[VehicleService.deleteVehicle] failure", {
+        status,
+        respData,
+      });
+    }
+
+    let code = "VEHICLE_DELETE_FAILED";
+    if (status === 404) code = "VEHICLE_NOT_FOUND";
+    return {
+      success: false,
+      error: { code, message },
     };
   }
 }

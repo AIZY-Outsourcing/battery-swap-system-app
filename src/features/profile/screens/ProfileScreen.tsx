@@ -93,11 +93,16 @@ export default function ProfileScreen({ navigation }: Props) {
 
   // Use real user data or fallback to mock
   const displayName = user
-    ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User'
-    : mockUser.name || 'User';
+    ? `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+      user.email ||
+      "User"
+    : mockUser.name || "User";
   const displayPhone = user?.phone || mockUser.phone;
   const displayEmail = user?.email || mockUser.email;
-  const userInitial = (displayName && displayName.length > 0) ? displayName.charAt(0).toUpperCase() : 'U';
+  const userInitial =
+    displayName && displayName.length > 0
+      ? displayName.charAt(0).toUpperCase()
+      : "U";
   const vehicle = user ? (user as any).vehicle : null;
 
   const handleLogout = () => {
@@ -135,6 +140,12 @@ export default function ProfileScreen({ navigation }: Props) {
   const accountMenu: MenuItemDef[] = useMemo(
     () => [
       {
+        key: "vehicles",
+        icon: "car-multiple",
+        label: "Quản lý xe",
+        onPress: () => navigation.navigate("MyVehicles"),
+      },
+      {
         key: "promo",
         icon: "gift-outline",
         label: t("profile.promo"),
@@ -153,7 +164,7 @@ export default function ProfileScreen({ navigation }: Props) {
         onPress: devAlert,
       },
     ],
-    [t]
+    [t, navigation]
   );
   const supportMenu: MenuItemDef[] = useMemo(
     () => [
@@ -262,77 +273,6 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
-
-        {/* Vehicle Info */}
-        {vehicle && (
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Thông tin xe</Text>
-            </View>
-            <View style={styles.vehicleInfo}>
-              <View style={styles.vehicleInfoRow}>
-                <MaterialCommunityIcons
-                  name="car-electric"
-                  size={20}
-                  color="#10b981"
-                  style={{ marginRight: 12 }}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.vehicleInfoLabel}>Tên xe</Text>
-                  <Text style={styles.vehicleInfoValue}>
-                    {vehicle.name || "--"}
-                  </Text>
-                </View>
-              </View>
-              {vehicle.plate_number && (
-                <View style={styles.vehicleInfoRow}>
-                  <MaterialCommunityIcons
-                    name="card-text-outline"
-                    size={20}
-                    color="#64748b"
-                    style={{ marginRight: 12 }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.vehicleInfoLabel}>Biển số</Text>
-                    <Text style={styles.vehicleInfoValue}>
-                      {vehicle.plate_number}
-                    </Text>
-                  </View>
-                </View>
-              )}
-              {vehicle.vin && (
-                <View style={styles.vehicleInfoRow}>
-                  <MaterialCommunityIcons
-                    name="barcode"
-                    size={20}
-                    color="#64748b"
-                    style={{ marginRight: 12 }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.vehicleInfoLabel}>VIN</Text>
-                    <Text style={styles.vehicleInfoValue}>{vehicle.vin}</Text>
-                  </View>
-                </View>
-              )}
-              {vehicle.manufacturer_year && (
-                <View style={styles.vehicleInfoRow}>
-                  <MaterialCommunityIcons
-                    name="calendar"
-                    size={20}
-                    color="#64748b"
-                    style={{ marginRight: 12 }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.vehicleInfoLabel}>Năm sản xuất</Text>
-                    <Text style={styles.vehicleInfoValue}>
-                      {vehicle.manufacturer_year}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
 
         {/* Face ID */}
         <View style={styles.sectionCard}>

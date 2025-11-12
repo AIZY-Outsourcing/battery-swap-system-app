@@ -30,6 +30,10 @@ import PaymentSuccessScreen from "../features/payment/screens/PaymentSuccessScre
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
 import SettingsScreen from "../features/profile/screens/SettingsScreen";
 import AccountDetailsScreen from "../features/profile/screens/AccountDetailsScreen";
+import MyVehiclesScreen from "../features/profile/screens/MyVehiclesScreen";
+import AddVehicleScreen from "../features/profile/screens/AddVehicleScreen";
+import VehicleDetailScreen from "../features/profile/screens/VehicleDetailScreen";
+import EditVehicleScreen from "../features/profile/screens/EditVehicleScreen";
 // Reservation screens
 import ReservationConfirmScreen from "../features/reservation/screens/ReservationConfirmScreen";
 // Invoice screens
@@ -253,6 +257,42 @@ export default function AppStackNavigator() {
         options={{
           headerShown: true,
           title: t("credits.manage"),
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="MyVehicles"
+        component={MyVehiclesScreen}
+        options={{
+          headerShown: true,
+          title: "Xe của tôi",
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="AddVehicle"
+        component={AddVehicleScreen}
+        options={{
+          headerShown: true,
+          title: "Thêm xe mới",
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="VehicleDetail"
+        component={VehicleDetailScreen}
+        options={{
+          headerShown: true,
+          title: "Chi tiết xe",
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="EditVehicle"
+        component={EditVehicleScreen}
+        options={{
+          headerShown: true,
+          title: "Chỉnh sửa xe",
           headerBackTitle: t("common.back"),
         }}
       />

@@ -215,22 +215,22 @@ export default function ProfileScreen({ navigation }: Props) {
         onPress: () => navigation.navigate("MyVehicles"),
       },
       {
-        key: "promo",
-        icon: "gift-outline",
-        label: t("profile.promo"),
-        onPress: devAlert,
-      },
-      {
         key: "guide",
         icon: "book-open-page-variant",
         label: t("profile.guide"),
-        onPress: devAlert,
+        onPress: () => navigation.navigate("Guide"),
       },
       {
         key: "faq",
         icon: "help-circle-outline",
         label: t("profile.faq"),
-        onPress: devAlert,
+        onPress: () => navigation.navigate("FAQ"),
+      },
+      {
+        key: "terms",
+        icon: "file-document-outline",
+        label: t("profile.terms"),
+        onPress: () => navigation.navigate("Terms"),
       },
     ],
     [t, navigation]
@@ -241,7 +241,7 @@ export default function ProfileScreen({ navigation }: Props) {
         key: "helpcenter",
         icon: "headset",
         label: t("profile.helpCenter"),
-        onPress: devAlert,
+        onPress: () => navigation.navigate("HelpCenter"),
       },
       {
         key: "support",
@@ -253,14 +253,7 @@ export default function ProfileScreen({ navigation }: Props) {
     [t, navigation]
   );
   const legalMenu: MenuItemDef[] = useMemo(
-    () => [
-      {
-        key: "terms",
-        icon: "file-document-outline",
-        label: t("profile.terms"),
-        onPress: devAlert,
-      },
-    ],
+    () => [],
     [t]
   );
 
@@ -386,16 +379,18 @@ export default function ProfileScreen({ navigation }: Props) {
         </View>
 
         {/* Legal */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {t("legal.title", { defaultValue: "Pháp lý" })}
-            </Text>
+        {legalMenu.length > 0 && (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {t("legal.title", { defaultValue: "Pháp lý" })}
+              </Text>
+            </View>
+            {legalMenu.map((m) => (
+              <MenuItem key={m.key} item={m} />
+            ))}
           </View>
-          {legalMenu.map((m) => (
-            <MenuItem key={m.key} item={m} />
-          ))}
-        </View>
+        )}
 
         {/* Language Switch */}
         <View style={styles.sectionCard}>

@@ -131,23 +131,7 @@ export default function PinSetupScreen({ navigation, route }: Props) {
             disabled={submitting || pin.length !== 6 || confirmPin.length !== 6}
             fullWidth
           />
-
-          <ThemedButton
-            title="Bỏ qua"
-            onPress={async () => {
-              const hasVehicle = await AuthService.hasCompletedVehicleSetup();
-              if (!hasVehicle) {
-                navigation.replace("VehicleSetup");
-              } else {
-                navigation.getParent()?.reset({
-                  index: 0,
-                  routes: [{ name: "AppStack" } as any],
-                });
-              }
-            }}
-            variant="tertiary"
-            fullWidth
-          />
+         
         </View>
       </ThemedCard>
     </AuthLayout>

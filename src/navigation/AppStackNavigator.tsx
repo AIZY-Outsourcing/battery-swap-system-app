@@ -34,6 +34,10 @@ import MyVehiclesScreen from "../features/profile/screens/MyVehiclesScreen";
 import AddVehicleScreen from "../features/profile/screens/AddVehicleScreen";
 import VehicleDetailScreen from "../features/profile/screens/VehicleDetailScreen";
 import EditVehicleScreen from "../features/profile/screens/EditVehicleScreen";
+import GuideScreen from "../features/profile/screens/GuideScreen";
+import FAQScreen from "../features/profile/screens/FAQScreen";
+import TermsScreen from "../features/profile/screens/TermsScreen";
+import HelpCenterScreen from "../features/profile/screens/HelpCenterScreen";
 // Reservation screens
 import ReservationConfirmScreen from "../features/reservation/screens/ReservationConfirmScreen";
 // Invoice screens
@@ -317,6 +321,42 @@ export default function AppStackNavigator() {
         options={{
           headerShown: true,
           title: "Chỉnh sửa xe",
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="Guide"
+        component={GuideScreen}
+        options={{
+          headerShown: true,
+          title: t("profile.guide"),
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="FAQ"
+        component={FAQScreen}
+        options={{
+          headerShown: true,
+          title: t("profile.faq"),
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={{
+          headerShown: true,
+          title: t("profile.terms"),
+          headerBackTitle: t("common.back"),
+        }}
+      />
+      <Stack.Screen
+        name="HelpCenter"
+        component={HelpCenterScreen}
+        options={{
+          headerShown: true,
+          title: t("profile.helpCenter"),
           headerBackTitle: t("common.back"),
         }}
       />

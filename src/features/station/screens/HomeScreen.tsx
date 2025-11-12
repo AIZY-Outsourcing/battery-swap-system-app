@@ -53,7 +53,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch, isRefetching } = useStations({
     battery_type: batteryType || undefined,
     sort,
-    radius: 10, // 10km radius
+    radius: 100, // 100km radius
   });
   const stations = data || [];
 

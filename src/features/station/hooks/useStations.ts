@@ -5,7 +5,7 @@ import type { Station } from "../../../types/station";
 import { distanceKm } from "../../../utils/geo";
 
 export type StationFilters = {
-  radius?: number; // km, default 10
+  radius?: number; // km, default 100
   battery_type?: string; // filter by battery type if needed
   sort?: "nearest" | "rating";
 };
@@ -35,7 +35,7 @@ export function useStations(filters: StationFilters = {}) {
       const data = await listStations({
         lat: userLat,
         lng: userLng,
-        radius: filters.radius || 10, // default 10km
+        radius: filters.radius || 100, // default 100km
       });
 
       // Client-side filter by battery_type if needed

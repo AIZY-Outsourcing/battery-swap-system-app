@@ -141,7 +141,7 @@ export async function reserveStation(
 
 // Backward-compatible class wrapper (if other parts import default)
 class StationServiceCompat {
-  async getNearbyStations(lat: number, lng: number, radius: number = 10) {
+  async getNearbyStations(lat: number, lng: number, radius: number = 100) {
     const data = await listStations({ lat, lng, radius });
     return { success: true, data } as const;
   }

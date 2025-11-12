@@ -243,14 +243,6 @@ export default function VehicleSetupScreen({ navigation }: Props) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <ThemedCard>
           <View style={{ gap: theme.spacing[4] }}>
-            {__DEV__ && (
-              <ThemedButton
-                title="🚗 Điền dữ liệu test"
-                onPress={fillTestData}
-                variant="secondary"
-                fullWidth
-              />
-            )}
 
             <View style={{ gap: theme.spacing[2] }}>
               <Text
@@ -426,16 +418,6 @@ export default function VehicleSetupScreen({ navigation }: Props) {
               title={submitting ? "Đang xử lý..." : "Hoàn tất đăng ký"}
               onPress={handleSubmit}
               disabled={submitting}
-              fullWidth
-            />
-            <ThemedButton
-              title="Bỏ qua (vào trang chính)"
-              onPress={() => {
-                navigation
-                  .getParent()
-                  ?.reset({ index: 0, routes: [{ name: "AppStack" } as any] });
-              }}
-              variant="tertiary"
               fullWidth
             />
           </View>

@@ -47,6 +47,10 @@ export type RootStackParamList = {
   AddVehicle: undefined;
   VehicleDetail: { vehicleId: string };
   EditVehicle: { vehicleId: string };
+  Guide: undefined;
+  FAQ: undefined;
+  Terms: undefined;
+  HelpCenter: undefined;
   // Other screens
   ReservationConfirm: { stationId: string; estimatedArrival?: Date };
   KioskSession: { reservationId?: string; stationId: string };

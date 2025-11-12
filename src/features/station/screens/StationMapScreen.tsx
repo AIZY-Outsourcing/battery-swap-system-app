@@ -50,7 +50,7 @@ export default function StationMapScreen() {
 
   // Use stations hook with user location
   const { data: stations = [], isLoading, error } = useStations({
-    radius: 20, // 20km radius
+    radius: 100, // 100km radius
   });
 
   // Filter stations based on selected filter

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,23 +8,40 @@ import {
   TextInput,
   Alert,
   Image,
+  ActivityIndicator,
 } from "react-native";
+import SupportService, {
+  SupportTicket,
+} from "../../../services/api/SupportService";
 // import { launchImageLibrary } from 'react-native-image-picker';
-
-interface SupportTicket {
-  id: string;
-  title: string;
-  type: string;
-  status: "Open" | "In Progress" | "Resolved" | "Closed";
-  createdAt: Date;
-  lastUpdated: Date;
-}
 
 const SupportScreen = () => {
   const [activeTab, setActiveTab] = useState<"create" | "tickets">("create");
   const [issueType, setIssueType] = useState("");
   const [description, setDescription] = useState("");
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "tickets") {
+      loadTickets();
+    }
+  }, [activeTab]);
+
+  const loadTickets = async () => {
+    try {
+      setLoading(true);
+      const response = await SupportService.getMyTickets();
+      setTickets(response.data);
+    } catch (error) {
+      console.error("Error loading tickets:", error);
+      Alert.alert("Lỗi", "Không thể tải danh sách yêu cầu hỗ trợ");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const issueTypes = [
     { value: "battery_error", label: "Pin lỗi" },
@@ -35,79 +52,86 @@ const SupportScreen = () => {
     { value: "other", label: "Khác" },
   ];
 
-  const mockTickets: SupportTicket[] = [
-    {
-      id: "1",
-      title: "Pin không sạc được",
-      type: "Pin lỗi",
-      status: "In Progress",
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      lastUpdated: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "2",
-      title: "Kiosk không mở được",
-      type: "Kiosk hỏng",
-      status: "Resolved",
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    },
-  ];
-
   const handleImagePick = () => {
     // Placeholder for image picker - would need react-native-image-picker
     Alert.alert("Chức năng", "Tính năng chọn ảnh sẽ được thêm sau");
-    // launchImageLibrary(
-    //   {
-    //     mediaType: 'photo',
-    //     quality: 0.8,
-    //     maxWidth: 1000,
-    //     maxHeight: 1000,
-    //   },
-    //   (response: any) => {
-    //     if (response.assets && response.assets[0]) {
-    //       const newImage = response.assets[0].uri || '';
-    //       setAttachedImages([...attachedImages, newImage]);
-    //     }
-    //   }
-    // );
   };
 
-  const handleSubmitTicket = () => {
+  const handleSubmitTicket = async () => {
     if (!issueType || !description.trim()) {
       Alert.alert("Lỗi", "Vui lòng chọn loại sự cố và nhập mô tả");
       return;
     }
 
-    Alert.alert(
-      "Thành công",
-      "Yêu cầu hỗ trợ đã được gửi. Chúng tôi sẽ phản hồi trong vòng 24h.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            setIssueType("");
-            setDescription("");
-            setAttachedImages([]);
-            setActiveTab("tickets");
+    try {
+      setSubmitting(true);
+
+      // Generate title from issue type
+      const issueTypeLabel =
+        issueTypes.find((t) => t.value === issueType)?.label ||
+        "Yêu cầu hỗ trợ";
+
+      await SupportService.createTicket({
+        title: issueTypeLabel,
+        subject_id: issueType,
+        station_id: "", // Empty for now, can be added later
+        description: description,
+      });
+
+      Alert.alert(
+        "Thành công",
+        "Yêu cầu hỗ trợ đã được gửi. Chúng tôi sẽ phản hồi trong vòng 24h.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setIssueType("");
+              setDescription("");
+              setAttachedImages([]);
+              setActiveTab("tickets");
+              loadTickets();
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    } catch (error: any) {
+      console.error("Error submitting ticket:", error);
+      Alert.alert(
+        "Lỗi",
+        error?.response?.data?.message || "Không thể gửi yêu cầu hỗ trợ"
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getStatusColor = (status: SupportTicket["status"]) => {
     switch (status) {
-      case "Open":
+      case "open":
         return "#FF6B35";
-      case "In Progress":
+      case "in_progress":
         return "#007AFF";
-      case "Resolved":
+      case "resolved":
         return "#34C759";
-      case "Closed":
+      case "closed":
         return "#8E8E93";
       default:
         return "#8E8E93";
+    }
+  };
+
+  const getStatusLabel = (status: SupportTicket["status"]) => {
+    switch (status) {
+      case "open":
+        return "Mở";
+      case "in_progress":
+        return "Đang xử lý";
+      case "resolved":
+        return "Đã giải quyết";
+      case "closed":
+        return "Đã đóng";
+      default:
+        return status;
     }
   };
 
@@ -227,23 +251,35 @@ const SupportScreen = () => {
             </View>
 
             <TouchableOpacity
-              style={styles.submitButton}
+              style={[
+                styles.submitButton,
+                submitting && styles.submitButtonDisabled,
+              ]}
               onPress={handleSubmitTicket}
+              disabled={submitting}
             >
-              <Text style={styles.submitButtonText}>Gửi yêu cầu hỗ trợ</Text>
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Gửi yêu cầu hỗ trợ</Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
           /* Tickets List */
           <View style={styles.ticketsContainer}>
-            {mockTickets.length === 0 ? (
+            {loading ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="large" color="#007AFF" />
+              </View>
+            ) : tickets.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
                   Bạn chưa có yêu cầu hỗ trợ nào
                 </Text>
               </View>
             ) : (
-              mockTickets.map((ticket) => (
+              tickets.map((ticket) => (
                 <TouchableOpacity key={ticket.id} style={styles.ticketCard}>
                   <View style={styles.ticketHeader}>
                     <Text style={styles.ticketTitle}>{ticket.title}</Text>
@@ -253,16 +289,25 @@ const SupportScreen = () => {
                         { backgroundColor: getStatusColor(ticket.status) },
                       ]}
                     >
-                      <Text style={styles.statusText}>{ticket.status}</Text>
+                      <Text style={styles.statusText}>
+                        {getStatusLabel(ticket.status)}
+                      </Text>
                     </View>
                   </View>
-                  <Text style={styles.ticketType}>{ticket.type}</Text>
-                  <Text style={styles.ticketDate}>
-                    Tạo: {formatDate(ticket.createdAt)}
+                  <Text style={styles.ticketType}>
+                    {ticket.subject?.name || "Hỗ trợ"}
                   </Text>
                   <Text style={styles.ticketDate}>
-                    Cập nhật: {formatDate(ticket.lastUpdated)}
+                    Tạo: {formatDate(new Date(ticket.created_at))}
                   </Text>
+                  <Text style={styles.ticketDate}>
+                    Cập nhật: {formatDate(new Date(ticket.updated_at))}
+                  </Text>
+                  {ticket.station && (
+                    <Text style={styles.ticketStation}>
+                      📍 {ticket.station.name}
+                    </Text>
+                  )}
                 </TouchableOpacity>
               ))
             )}
@@ -453,6 +498,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     marginBottom: 2,
+  },
+  ticketStation: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
 });
 

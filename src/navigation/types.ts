@@ -52,6 +52,9 @@ export type RootStackParamList = {
   KioskSession: { reservationId?: string; stationId: string };
   InvoiceScreen: { paymentId: string };
   SupportDetail: { requestId: string };
+  CreateSupportRequest: undefined;
+  SupportRequest: undefined;
+  SupportRequestDetail: { ticketId: string };
   StationRating: { transactionId: string; stationId: string };
   VehicleProfile: undefined;
   Subscription: undefined;

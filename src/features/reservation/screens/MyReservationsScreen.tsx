@@ -9,14 +9,19 @@ import {
   TouchableOpacity,
   Alert,
   SafeAreaView,
+  RefreshControl,
+  ActivityIndicator,
+  Linking,
+  Platform,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { MainTabParamList } from "../../../navigation/types";
-import { mockReservations } from "../../../data/mockData";
-import type { Reservation } from "../../../data/mockData";
 import Button from "../../../components/ui/Button";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { styleTokens } from "../../../styles/tokens";
+import ReservationService, {
+  Reservation,
+} from "../../../services/api/ReservationService";
 
 type Props = NativeStackScreenProps<MainTabParamList, "MyReservations">;
 
@@ -24,52 +29,164 @@ export default function MyReservationsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
   const [tab, setTab] = useState<"active" | "history">("active");
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60 * 1000); // update each minute
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    loadReservations();
+  }, []);
+
+  const loadReservations = async () => {
+    try {
+      setLoading(true);
+      const response = await ReservationService.getMyReservations();
+      console.log("Reservations response:", JSON.stringify(response, null, 2));
+      console.log("response type:", typeof response);
+      console.log("response:", response);
+
+      // Response is already Reservation[]
+      const reservationsData = Array.isArray(response) ? response : [];
+
+      setReservations(reservationsData);
+    } catch (error: any) {
+      console.error("Error loading reservations:", error);
+      const errorMsg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể tải danh sách đặt chỗ";
+      Alert.alert("Lỗi", errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadReservations();
+    setRefreshing(false);
+  }, []);
+
   const reservationsAugmented = useMemo(() => {
-    return mockReservations.map((r) => {
-      const remainingMs = r.expiredAt.getTime() - now;
+    return reservations.map((r) => {
+      const expirationTime = new Date(r.expiration_at).getTime();
+      const remainingMs = expirationTime - now;
       const remainingMinutes = Math.max(0, Math.floor(remainingMs / 60000));
-      // derive dynamic expired status
-      const derivedStatus =
-        r.status === "active" && remainingMinutes === 0 ? "expired" : r.status;
-      return { ...r, remainingMinutes, derivedStatus } as Reservation & {
-        remainingMinutes: number;
-        derivedStatus: Reservation["status"];
+
+      // Derive dynamic status based on API status
+      let derivedStatus = r.status;
+      if (r.status === "confirmed" && remainingMinutes === 0) {
+        derivedStatus = "expired";
+      }
+
+      return {
+        ...r,
+        remainingMinutes,
+        derivedStatus,
+        // Map API fields to display fields
+        stationName: r.station?.name || "Unknown Station",
+        stationAddress: r.station?.address || "",
+        batteryType: "Standard", // Battery type info not in response
+        reservedAt: new Date(r.reservation_at),
+        estimatedArrival: new Date(r.expiration_at),
       };
     });
-  }, [now]);
+  }, [reservations, now]);
 
   const activeReservations = reservationsAugmented.filter(
-    (r) => r.derivedStatus === "active"
+    (r) => r.status === "confirmed" || r.status === "pending"
   );
   const historyReservations = reservationsAugmented.filter(
-    (r) => r.derivedStatus !== "active"
+    (r) => r.status !== "confirmed" && r.status !== "pending"
   );
 
-  const handleCancelReservation = (reservationId: string) => {
+  const handleCancelReservation = async (reservationId: string) => {
     Alert.alert(t("reservation.cancelTitle"), t("reservation.cancelMessage"), [
       { text: t("reservation.cancelNo"), style: "cancel" },
       {
         text: t("reservation.cancelConfirm"),
         style: "destructive",
-        onPress: () => {
-          // TODO: Integrate cancel reservation API
-          Alert.alert(
-            t("reservation.cancelSuccessTitle"),
-            t("reservation.cancelSuccessMessage")
-          );
+        onPress: async () => {
+          try {
+            await ReservationService.cancelReservation(reservationId);
+            Alert.alert(
+              t("reservation.cancelSuccessTitle"),
+              t("reservation.cancelSuccessMessage")
+            );
+            loadReservations(); // Reload list
+          } catch (error) {
+            console.error("Error cancelling reservation:", error);
+            Alert.alert("Lỗi", "Không thể hủy đặt chỗ");
+          }
         },
       },
     ]);
   };
 
+  const handleOpenDirections = (reservation: any) => {
+    const { station } = reservation;
+
+    console.log("🗺️ Opening directions for reservation:", {
+      reservationId: reservation.id,
+      hasStation: !!station,
+      station: station,
+      stationLat: station?.latitude || station?.lat,
+      stationLng: station?.longitude || station?.lng,
+    });
+
+    if (!station) {
+      Alert.alert("Lỗi", "Không có thông tin trạm. Vui lòng thử lại sau.");
+      return;
+    }
+
+    // Support both latitude/longitude and lat/lng field names
+    const lat = parseFloat(station.latitude || station.lat);
+    const lng = parseFloat(station.longitude || station.lng);
+
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+      Alert.alert("Lỗi", "Không có thông tin vị trí trạm");
+      console.error("Invalid coordinates:", { lat, lng, station });
+      return;
+    }
+
+    const label = encodeURIComponent(station.name || "Trạm đổi pin");
+
+    // Google Maps URL scheme
+    const url = Platform.select({
+      ios: `comgooglemaps://?q=${lat},${lng}&center=${lat},${lng}&zoom=15`,
+      android: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
+    });
+
+    const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+    if (url) {
+      Linking.canOpenURL(url)
+        .then((supported) => {
+          if (supported) {
+            return Linking.openURL(url);
+          } else {
+            // Fallback to web browser
+            return Linking.openURL(fallbackUrl);
+          }
+        })
+        .catch(() => {
+          // Fallback if anything goes wrong
+          Linking.openURL(fallbackUrl);
+        });
+    }
+  };
+
   const statusConfig: Record<string, { label: string; color: string }> = {
-    active: { label: t("status.active"), color: styleTokens.colors.success },
+    pending: {
+      label: t("status.pending", { defaultValue: "Đang chờ" }),
+      color: "#f59e0b",
+    },
+    confirmed: { label: t("status.active"), color: styleTokens.colors.success },
     completed: {
       label: t("status.completed"),
       color: styleTokens.colors.primary,
@@ -83,10 +200,18 @@ export default function MyReservationsScreen({ navigation }: Props) {
 
   const renderCard = useCallback(
     (
-      item: Reservation & { remainingMinutes: number; derivedStatus: string }
+      item: Reservation & {
+        remainingMinutes: number;
+        derivedStatus: string;
+        stationName: string;
+        stationAddress: string;
+        batteryType: string;
+        reservedAt: Date;
+        estimatedArrival: Date;
+      }
     ) => {
       const cfg = statusConfig[item.derivedStatus] || statusConfig[item.status];
-      const showCountdown = item.derivedStatus === "active";
+      const showCountdown = item.status === "confirmed";
 
       // Visual emphasis variants for countdown
       const getCountdownVisual = (mins: number) => {
@@ -185,15 +310,10 @@ export default function MyReservationsScreen({ navigation }: Props) {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.outlineBtn]}
-                  onPress={() =>
-                    Alert.alert(
-                      t("reservation.directionsTitle"),
-                      t("reservation.directionsMessage")
-                    )
-                  }
+                  style={[styles.actionBtn, styles.directionsBtn]}
+                  onPress={() => handleOpenDirections(item)}
                 >
-                  <Text style={styles.outlineBtnText}>
+                  <Text style={styles.directionsBtnText}>
                     {t("reservation.navigate")}
                   </Text>
                 </TouchableOpacity>
@@ -208,6 +328,21 @@ export default function MyReservationsScreen({ navigation }: Props) {
 
   const dataToRender =
     tab === "active" ? activeReservations : historyReservations;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View
+          style={[
+            styles.container,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <ActivityIndicator size="large" color={styleTokens.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -269,6 +404,9 @@ export default function MyReservationsScreen({ navigation }: Props) {
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => renderCard(item as any)}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       )}
     </SafeAreaView>
@@ -449,6 +587,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  directionsBtn: {
+    backgroundColor: "#5D7B6F",
+  },
+  directionsBtnText: {
+    color: styleTokens.colors.white,
+    fontWeight: "600",
+    fontSize: 14,
+  },
   outlineBtn: {
     borderWidth: 1,
     borderColor: styleTokens.colors.primary,
@@ -480,5 +626,7 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     alignSelf: "stretch",
+    backgroundColor: "#5D7B6F",
+    borderColor: "#5D7B6F",
   },
 });

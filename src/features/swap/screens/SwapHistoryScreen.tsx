@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,21 +7,13 @@ import {
   SafeAreaView,
   FlatList,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { theme } from "../../../theme";
-
-interface SwapRecord {
-  id: string;
-  stationName: string;
-  stationAddress: string;
-  swapTime: string;
-  date: string;
-  oldBatteryLevel: string;
-  newBatteryLevel: string;
-  cost: string;
-  duration: string;
-  status: "completed" | "failed" | "cancelled";
-}
+import SwapTransactionService, {
+  SwapTransaction,
+} from "../../../services/api/SwapTransactionService";
 
 interface SwapHistoryScreenProps {
   navigation: any;
@@ -31,58 +23,33 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
   navigation,
 }) => {
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [swapHistory, setSwapHistory] = useState<SwapTransaction[]>([]);
 
-  const mockSwapHistory: SwapRecord[] = [
-    {
-      id: "1",
-      stationName: "Vincom Bà Triệu",
-      stationAddress: "191 Bà Triệu, Hai Bà Trưng, Hà Nội",
-      swapTime: "14:32",
-      date: "21/12/2024",
-      oldBatteryLevel: "15%",
-      newBatteryLevel: "98%",
-      cost: "15.000 VND",
-      duration: "2 phút 45 giây",
-      status: "completed",
-    },
-    {
-      id: "2",
-      stationName: "Big C Thăng Long",
-      stationAddress: "222 Trần Duy Hưng, Cầu Giấy, Hà Nội",
-      swapTime: "09:15",
-      date: "19/12/2024",
-      oldBatteryLevel: "8%",
-      newBatteryLevel: "95%",
-      cost: "15.000 VND",
-      duration: "3 phút 12 giây",
-      status: "completed",
-    },
-    {
-      id: "3",
-      stationName: "Lotte Center",
-      stationAddress: "54 Liễu Giai, Ba Đình, Hà Nội",
-      swapTime: "16:45",
-      date: "17/12/2024",
-      oldBatteryLevel: "12%",
-      newBatteryLevel: "0%",
-      cost: "0 VND",
-      duration: "1 phút 23 giây",
-      status: "failed",
-    },
-    {
-      id: "4",
-      stationName: "AEON Mall Hà Đông",
-      stationAddress: "Số 1 Đường Đ. Đặng Thúc Vịnh, Hà Đông, Hà Nội",
-      swapTime: "11:20",
-      date: "15/12/2024",
-      oldBatteryLevel: "20%",
-      newBatteryLevel: "20%",
-      cost: "0 VND",
-      duration: "45 giây",
-      status: "cancelled",
-    },
-  ];
+  useEffect(() => {
+    loadSwapHistory();
+  }, []);
+
+  const loadSwapHistory = async () => {
+    try {
+      setLoading(true);
+      const transactions = await SwapTransactionService.getMySwapTransactions();
+      setSwapHistory(Array.isArray(transactions) ? transactions : []);
+    } catch (error) {
+      console.error("Error loading swap history:", error);
+      Alert.alert("Lỗi", "Không thể tải lịch sử đổi pin");
+      setSwapHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadSwapHistory();
+    setRefreshing(false);
+  }, []);
 
   const periods = [
     { id: "all", label: "Tất cả" },
@@ -90,13 +57,6 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
     { id: "month", label: "Tháng này" },
     { id: "quarter", label: "3 tháng" },
   ];
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -124,77 +84,82 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
     }
   };
 
-  const renderSwapItem = ({ item }: { item: SwapRecord }) => (
-    <TouchableOpacity
-      style={styles.swapItem}
-      onPress={() => {
-        // Navigate to swap detail screen
-        // navigation.navigate('SwapDetail', { swapId: item.id });
-      }}
-    >
-      <View style={styles.swapHeader}>
-        <View style={styles.stationInfo}>
-          <Text style={styles.stationName}>{item.stationName}</Text>
-          <Text style={styles.stationAddress}>{item.stationAddress}</Text>
-        </View>
-        <View style={styles.statusContainer}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          />
-          <Text
-            style={[styles.statusText, { color: getStatusColor(item.status) }]}
-          >
-            {getStatusText(item.status)}
-          </Text>
-        </View>
-      </View>
+  const renderSwapItem = ({ item }: { item: SwapTransaction }) => {
+    const swapOrder = item.swap_order;
+    const createdDate = new Date(item.created_at);
+    const stationName = swapOrder?.station?.name || "Unknown Station";
+    const stationAddress = swapOrder?.station?.address || "";
+    const oldBatteryLevel = swapOrder?.old_battery?.soc
+      ? `${swapOrder.old_battery.soc}%`
+      : "N/A";
+    const newBatteryLevel = swapOrder?.new_battery?.soc
+      ? `${swapOrder.new_battery.soc}%`
+      : "N/A";
 
-      <View style={styles.swapDetails}>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Thời gian</Text>
-          <Text style={styles.detailValue}>
-            {item.swapTime} - {item.date}
-          </Text>
+    return (
+      <TouchableOpacity
+        style={styles.swapItem}
+        onPress={() => {
+          // Navigate to swap detail screen if needed
+        }}
+      >
+        <View style={styles.swapHeader}>
+          <View style={styles.stationInfo}>
+            <Text style={styles.stationName}>{stationName}</Text>
+            <Text style={styles.stationAddress}>{stationAddress}</Text>
+          </View>
+          <View style={styles.statusContainer}>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: getStatusColor(item.status) },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(item.status) },
+              ]}
+            >
+              {getStatusText(item.status)}
+            </Text>
+          </View>
         </View>
 
-        {item.status === "completed" && (
-          <>
-            <View style={styles.batteryRow}>
-              <View style={styles.batteryInfo}>
-                <Text style={styles.batteryLabel}>Pin cũ</Text>
-                <Text style={styles.batteryValue}>{item.oldBatteryLevel}</Text>
-              </View>
-              <Text style={styles.batteryArrow}>→</Text>
-              <View style={styles.batteryInfo}>
-                <Text style={styles.batteryLabel}>Pin mới</Text>
-                <Text style={styles.batteryValue}>{item.newBatteryLevel}</Text>
-              </View>
-            </View>
-
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Thời gian đổi</Text>
-              <Text style={styles.detailValue}>{item.duration}</Text>
-            </View>
-          </>
-        )}
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Chi phí</Text>
-          <Text
-            style={[
-              styles.detailValue,
-              item.status === "completed" && styles.costValue,
-            ]}
-          >
-            {item.cost}
-          </Text>
+        <View style={styles.swapDetails}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Thời gian:</Text>
+            <Text style={styles.detailValue}>
+              {createdDate.toLocaleString("vi-VN")}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Pin cũ:</Text>
+            <Text style={styles.detailValue}>{oldBatteryLevel}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Pin mới:</Text>
+            <Text style={styles.detailValue}>{newBatteryLevel}</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View
+          style={[
+            styles.container,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -241,32 +206,38 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
       {/* Statistics */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>4</Text>
+          <Text style={styles.statValue}>{swapHistory.length}</Text>
           <Text style={styles.statLabel}>Lần đổi</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>30.000 VND</Text>
+          <Text style={styles.statValue}>-</Text>
           <Text style={styles.statLabel}>Chi phí</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>2 phút 30 giây</Text>
+          <Text style={styles.statValue}>-</Text>
           <Text style={styles.statLabel}>Thời gian TB</Text>
         </View>
       </View>
 
       {/* Swap History List */}
-      <FlatList
-        data={mockSwapHistory}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSwapItem}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {swapHistory.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Chưa có lịch sử đổi pin</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={swapHistory}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSwapItem}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -439,5 +410,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.text.secondary,
     marginHorizontal: 12,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
   },
 });

@@ -121,11 +121,6 @@ export default function StationCard({
 
       <Text style={styles.address}>{station.address}</Text>
       {station.city && <Text style={styles.city}>📍 {station.city}</Text>}
-      {station.staff && (
-        <Text style={styles.staffInfo}>
-          👤 Nhân viên: {station.staff.name} ({station.staff.phone})
-        </Text>
-      )}
 
       <View style={styles.info}>
         <View
@@ -149,16 +144,18 @@ export default function StationCard({
           />
           <Text style={styles.typeText}>{getTypeText()}</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <MaterialCommunityIcons
-            name="clock-outline"
-            size={14}
-            color={styleTokens.colors.success}
-          />
-          <Text style={styles.hours}>
-            {t("station.open")}: {station.openHours}
-          </Text>
-        </View>
+        {station.status && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <MaterialCommunityIcons
+              name="information-outline"
+              size={14}
+              color={styleTokens.colors.textMuted}
+            />
+            <Text style={styles.hours}>
+              {station.status === "active" ? "Hoạt động" : station.status}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View
@@ -276,12 +273,6 @@ const styles = StyleSheet.create({
     color: styleTokens.colors.textMuted,
   },
   city: {
-    ...styleTokens.typography.small,
-    color: styleTokens.colors.textMuted,
-    marginBottom: styleTokens.spacing.sm,
-    fontStyle: "italic",
-  },
-  staffInfo: {
     ...styleTokens.typography.small,
     color: styleTokens.colors.textMuted,
     marginBottom: styleTokens.spacing.sm,

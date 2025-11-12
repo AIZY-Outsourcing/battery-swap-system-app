@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,81 +7,109 @@ import {
   Alert,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../navigation/types";
 import { useAuthStore } from "../../../store/authStore";
+import { getStationById } from "../../../services/api/StationService";
+import reservationService from "../../../services/api/ReservationService";
+import vehicleService, {
+  type VehicleRecord,
+  type BackendVehicle,
+} from "../../../services/api/VehicleService";
+import type { Station } from "../../../types/station";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ReservationConfirm">;
 
-interface BatteryOption {
-  id: string;
-  type: "A" | "B" | "C";
-  capacity: string;
-  available: number;
-  price: number;
-}
-
-interface Station {
-  id: string;
-  name: string;
-  address: string;
-  distance: number;
-  available: number;
-  batteryOptions: BatteryOption[];
-}
-
-// Mock data - in real app this would come from API
-const mockStation: Station = {
-  id: "1",
-  name: "Trạm Cầu Giấy - A1",
-  address: "123 Đường Cầu Giấy, Cầu Giấy, Hà Nội",
-  distance: 1.2,
-  available: 8,
-  batteryOptions: [
-    { id: "1", type: "A", capacity: "48V 20Ah", available: 3, price: 15000 },
-    { id: "2", type: "B", capacity: "60V 20Ah", available: 3, price: 18000 },
-    { id: "3", type: "C", capacity: "72V 20Ah", available: 2, price: 22000 },
-  ],
-};
+const DURATION_OPTIONS = [30, 60, 90, 120]; // minutes
 
 export default function ReservationConfirmScreen({ navigation, route }: Props) {
   const { stationId } = route.params;
-  const [selectedBattery, setSelectedBattery] = useState<BatteryOption | null>(
+  const [station, setStation] = useState<Station | null>(null);
+  const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleRecord | null>(
     null
   );
+  const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [isLoading, setIsLoading] = useState(false);
-  const credits = useAuthStore((s) => s.user?.swapCredits ?? 0);
+  const [loadingStation, setLoadingStation] = useState(true);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const user = useAuthStore((s) => s.user);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
+  useEffect(() => {
+    loadStation();
+    loadVehicles();
+  }, [stationId]);
+
+  const loadStation = async () => {
+    try {
+      setLoadingStation(true);
+      const data = await getStationById(stationId);
+      setStation(data);
+    } catch (error: any) {
+      Alert.alert("Lỗi", "Không thể tải thông tin trạm");
+      navigation.goBack();
+    } finally {
+      setLoadingStation(false);
+    }
+  };
+
+  const loadVehicles = async () => {
+    try {
+      setLoadingVehicles(true);
+      const response = await vehicleService.getMyVehicles();
+
+      if (response.success && response.data) {
+        // Convert BackendVehicle[] to VehicleRecord[]
+        const vehicleRecords: VehicleRecord[] = response.data.map((v) => ({
+          id: v.id,
+          name: v.name,
+          vin: v.vin,
+          plateNumber: v.plate_number,
+          year: v.manufacturer_year,
+          userId: v.user_id,
+          batteryTypeId: v.battery_type_id,
+          createdAt: v.created_at,
+          updatedAt: v.updated_at,
+        }));
+
+        setVehicles(vehicleRecords);
+        // Auto-select first vehicle if only one
+        if (vehicleRecords.length === 1) {
+          setSelectedVehicle(vehicleRecords[0]);
+        }
+      } else {
+        Alert.alert(
+          "Lỗi",
+          response.error?.message ||
+            "Không thể tải danh sách xe. Vui lòng đăng ký xe trước."
+        );
+        navigation.goBack();
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Lỗi",
+        "Không thể tải danh sách xe. Vui lòng đăng ký xe trước."
+      );
+      navigation.goBack();
+    } finally {
+      setLoadingVehicles(false);
+    }
   };
 
   const handleConfirmReservation = async () => {
-    if (!selectedBattery) {
-      Alert.alert("Thông báo", "Vui lòng chọn loại pin!");
-      return;
-    }
+    if (!station) return;
 
-    if (credits <= 0) {
-      Alert.alert(
-        "Không đủ lượt",
-        "Bạn cần nạp thêm lượt đổi pin để tiếp tục!"
-      );
+    if (!selectedVehicle) {
+      Alert.alert("Thông báo", "Vui lòng chọn xe để đặt pin!");
       return;
     }
 
     Alert.alert(
       "Xác nhận đặt pin",
-      `Bạn có chắc chắn muốn đặt pin ${selectedBattery.type} tại ${
-        mockStation.name
-      }?\n\nGiá: ${formatCurrency(
-        selectedBattery.price
-      )}\nThời gian giữ chỗ: 30 phút`,
+      `Bạn có chắc chắn muốn đặt pin tại ${station.name}?\n\nXe: ${selectedVehicle.name}\nThời gian giữ chỗ: ${selectedDuration} phút\n\nHệ thống sẽ tự động chọn pin phù hợp với xe của bạn.`,
       [
         { text: "Hủy", style: "cancel" },
         {
@@ -89,21 +117,16 @@ export default function ReservationConfirmScreen({ navigation, route }: Props) {
           onPress: async () => {
             setIsLoading(true);
             try {
-              // Simulate API call
-              await new Promise((resolve) => setTimeout(resolve, 1500));
+              const result = await reservationService.createReservation({
+                station_id: String(station.id),
+                vehicle_id: selectedVehicle.id,
+                duration_minutes: selectedDuration,
+              });
 
               Alert.alert(
                 "Đặt pin thành công!",
-                `Pin ${selectedBattery.type} đã được đặt tại ${mockStation.name}.\n\nVui lòng đến trạm trong vòng 30 phút để không bị hủy tự động.`,
+                `Pin đã được đặt tại ${station.name}.\n\nVui lòng đến trạm trong vòng ${selectedDuration} phút để không bị hủy tự động.`,
                 [
-                  {
-                    text: "Xem đặt chỗ",
-                    onPress: () => {
-                      navigation.navigate("MainTabs", {
-                        screen: "MyReservations",
-                      } as any);
-                    },
-                  },
                   {
                     text: "Về trang chủ",
                     onPress: () => {
@@ -114,8 +137,13 @@ export default function ReservationConfirmScreen({ navigation, route }: Props) {
                   },
                 ]
               );
-            } catch (error) {
-              Alert.alert("Lỗi", "Không thể đặt pin. Vui lòng thử lại!");
+            } catch (error: any) {
+              Alert.alert(
+                "Lỗi",
+                error.response?.data?.message ||
+                  error.message ||
+                  "Không thể đặt pin. Vui lòng thử lại!"
+              );
             } finally {
               setIsLoading(false);
             }
@@ -133,126 +161,191 @@ export default function ReservationConfirmScreen({ navigation, route }: Props) {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>←</Text>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đặt trước pin</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Station Info */}
-        <View style={styles.stationCard}>
-          <View style={styles.stationHeader}>
-            <Text style={styles.stationName}>{mockStation.name}</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>Có sẵn</Text>
-            </View>
-          </View>
-          <Text style={styles.stationAddress}>{mockStation.address}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={styles.stationDistance}>
-              📍 {mockStation.distance} km •{" "}
-            </Text>
-            <MaterialCommunityIcons
-              name="battery-charging-medium"
-              size={14}
-              color="#4ade80"
-            />
-            <Text style={styles.stationDistance}>
-              {" "}
-              {mockStation.available} pin có sẵn
-            </Text>
-          </View>
+      {loadingStation || loadingVehicles ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5D7B6F" />
+          <Text style={styles.loadingText}>Đang tải thông tin...</Text>
         </View>
-
-        {/* Credits Info */}
-        <View style={styles.creditsCard}>
-          <Text style={styles.creditsTitle}>Lượt đổi pin của bạn</Text>
-          <Text style={styles.creditsCount}>{credits} lượt</Text>
-          {credits <= 0 && (
-            <Text style={styles.creditsWarning}>
-              Bạn cần nạp thêm lượt để đặt pin
-            </Text>
-          )}
+      ) : !station || vehicles.length === 0 ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            {!station
+              ? "Không thể tải thông tin trạm"
+              : "Bạn chưa có xe nào. Vui lòng đăng ký xe trước."}
+          </Text>
         </View>
-
-        {/* Battery Selection */}
-        <View style={styles.batterySection}>
-          <Text style={styles.sectionTitle}>Chọn loại pin</Text>
-          {mockStation.batteryOptions.map((battery) => (
-            <TouchableOpacity
-              key={battery.id}
-              style={[
-                styles.batteryOption,
-                selectedBattery?.id === battery.id && styles.selectedBattery,
-                battery.available === 0 && styles.disabledBattery,
-              ]}
-              onPress={() =>
-                battery.available > 0 ? setSelectedBattery(battery) : null
-              }
-              disabled={battery.available === 0}
-            >
-              <View style={styles.batteryInfo}>
-                <Text style={styles.batteryType}>Pin {battery.type}</Text>
-                <Text style={styles.batteryCapacity}>{battery.capacity}</Text>
-                <Text style={styles.batteryAvailable}>
-                  Còn lại: {battery.available} pin
-                </Text>
-              </View>
-              <View style={styles.batteryRight}>
-                <Text style={styles.batteryPrice}>
-                  {formatCurrency(battery.price)}
-                </Text>
-                <View
-                  style={[
-                    styles.radioButton,
-                    selectedBattery?.id === battery.id && styles.radioSelected,
-                  ]}
-                >
-                  {selectedBattery?.id === battery.id && (
-                    <View style={styles.radioInner} />
-                  )}
+      ) : (
+        <>
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Station Info */}
+            <View style={styles.stationCard}>
+              <View style={styles.stationHeader}>
+                <Text style={styles.stationName}>{station.name}</Text>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>
+                    {station.available && station.available > 0
+                      ? "Có sẵn"
+                      : "Hết pin"}
+                  </Text>
                 </View>
               </View>
+              <Text style={styles.stationAddress}>{station.address}</Text>
+              {station.city && (
+                <Text style={styles.stationCity}>🏙️ {station.city}</Text>
+              )}
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {station.distanceKm && (
+                  <Text style={styles.stationDistance}>
+                    📍 {station.distanceKm.toFixed(1)} km •{" "}
+                  </Text>
+                )}
+                <MaterialCommunityIcons
+                  name="battery-charging-medium"
+                  size={14}
+                  color="#4ade80"
+                />
+                <Text style={styles.stationDistance}>
+                  {" "}
+                  {station.available || 0} pin có sẵn
+                </Text>
+              </View>
+            </View>
+
+            {/* User Info */}
+            {/* {user && (
+              <View style={styles.userCard}>
+                <Text style={styles.userTitle}>Thông tin xe của bạn</Text>
+                <Text style={styles.userText}>
+                  📱 {user.phone || user.email}
+                </Text>
+                <Text style={styles.userNote}>
+                  💡 Hệ thống sẽ tự động chọn pin phù hợp với xe của bạn
+                </Text>
+              </View>
+            )} */}
+
+            {/* Vehicle Selection */}
+            {vehicles.length > 0 && (
+              <View style={styles.vehicleSection}>
+                <Text style={styles.sectionTitle}>Chọn xe</Text>
+                {vehicles.map((vehicle) => (
+                  <TouchableOpacity
+                    key={vehicle.id}
+                    style={[
+                      styles.vehicleOption,
+                      selectedVehicle?.id === vehicle.id &&
+                        styles.selectedVehicle,
+                    ]}
+                    onPress={() => setSelectedVehicle(vehicle)}
+                  >
+                    <View style={styles.vehicleInfo}>
+                      <Text style={styles.vehicleName}>🏍️ {vehicle.name}</Text>
+                      <Text style={styles.vehiclePlate}>
+                        {vehicle.plateNumber}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        selectedVehicle?.id === vehicle.id &&
+                          styles.radioSelected,
+                      ]}
+                    >
+                      {selectedVehicle?.id === vehicle.id && (
+                        <View style={styles.radioInner} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Duration Selection */}
+            <View style={styles.durationSection}>
+              <Text style={styles.sectionTitle}>Thời gian giữ chỗ</Text>
+              <View style={styles.durationOptions}>
+                {DURATION_OPTIONS.map((duration) => (
+                  <TouchableOpacity
+                    key={duration}
+                    style={[
+                      styles.durationOption,
+                      selectedDuration === duration && styles.selectedDuration,
+                    ]}
+                    onPress={() => setSelectedDuration(duration)}
+                  >
+                    <Text
+                      style={[
+                        styles.durationText,
+                        selectedDuration === duration &&
+                          styles.selectedDurationText,
+                      ]}
+                    >
+                      {duration} phút
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Terms */}
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>Điều khoản đặt trước</Text>
+              <Text style={styles.termsText}>
+                • Thời gian giữ chỗ: {selectedDuration} phút kể từ khi đặt
+                {"\n"}• Phí đặt trước: Miễn phí{"\n"}• Hủy đặt chỗ: Có thể hủy
+                miễn phí trước khi hết hạn{"\n"}• Pin sẽ tự động hủy nếu quá
+                thời gian
+              </Text>
+            </View>
+          </ScrollView>
+
+          {/* Bottom Actions */}
+          <View style={styles.bottomActions}>
+            <View style={styles.selectedInfo}>
+              <Text style={styles.selectedText}>
+                {selectedVehicle ? `Xe: ${selectedVehicle.name} • ` : ""}
+                Thời gian: {selectedDuration} phút
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.confirmButton,
+                (isLoading ||
+                  !selectedVehicle ||
+                  !station.available ||
+                  station.available <= 0) &&
+                  styles.confirmButtonDisabled,
+              ]}
+              onPress={handleConfirmReservation}
+              disabled={
+                isLoading ||
+                !selectedVehicle ||
+                !station.available ||
+                station.available <= 0
+              }
+            >
+              <Text style={styles.confirmButtonText}>
+                {isLoading
+                  ? "Đang xử lý..."
+                  : !selectedVehicle
+                  ? "Chọn xe để tiếp tục"
+                  : !station.available || station.available <= 0
+                  ? "Hết pin"
+                  : "Xác nhận đặt pin"}
+              </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Terms */}
-        <View style={styles.termsSection}>
-          <Text style={styles.termsTitle}>Điều khoản đặt trước</Text>
-          <Text style={styles.termsText}>
-            • Thời gian giữ chỗ: 30 phút kể từ khi đặt{"\n"}• Phí đặt trước:
-            Miễn phí{"\n"}• Hủy đặt chỗ: Có thể hủy miễn phí trước khi hết hạn
-            {"\n"}• Pin sẽ tự động hủy nếu quá thời gian
-          </Text>
-        </View>
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        {selectedBattery && (
-          <View style={styles.selectedInfo}>
-            <Text style={styles.selectedText}>
-              Pin {selectedBattery.type} •{" "}
-              {formatCurrency(selectedBattery.price)}
-            </Text>
           </View>
-        )}
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            (!selectedBattery || credits <= 0 || isLoading) &&
-              styles.confirmButtonDisabled,
-          ]}
-          onPress={handleConfirmReservation}
-          disabled={!selectedBattery || credits <= 0 || isLoading}
-        >
-          <Text style={styles.confirmButtonText}>
-            {isLoading ? "Đang xử lý..." : "Xác nhận đặt pin"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -260,22 +353,17 @@ export default function ReservationConfirmScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#b0d4b8",
+    backgroundColor: "#f1f5f9",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
   },
   backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: "#000000",
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -283,7 +371,26 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
   headerSpacer: {
-    width: 40,
+    width: 28, // Same width as back button icon
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#666666",
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#ef4444",
   },
   content: {
     flex: 1,
@@ -317,98 +424,82 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: "500",
-    color: "#000000",
+    color: "#ffffff",
   },
   stationAddress: {
     fontSize: 14,
-    color: "#888888",
+    color: "#666666",
+    marginBottom: 4,
+  },
+  stationCity: {
+    fontSize: 13,
+    color: "#666666",
     marginBottom: 4,
   },
   stationDistance: {
     fontSize: 12,
     color: "#5D7B6F",
   },
-  creditsCard: {
+  userCard: {
     backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    alignItems: "center",
   },
-  creditsTitle: {
+  userTitle: {
     fontSize: 14,
-    color: "#888888",
-    marginBottom: 4,
-  },
-  creditsCount: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#5D7B6F",
-  },
-  creditsWarning: {
-    fontSize: 12,
-    color: "#ef4444",
-    marginTop: 4,
-  },
-  batterySection: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
     fontWeight: "600",
     color: "#000000",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  batteryOption: {
+  userText: {
+    fontSize: 14,
+    color: "#666666",
+    marginBottom: 4,
+  },
+  userNote: {
+    fontSize: 12,
+    color: "#5D7B6F",
+    fontStyle: "italic",
+    marginTop: 4,
+  },
+  vehicleSection: {
+    marginBottom: 16,
+  },
+  vehicleOption: {
     backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: "#e0e0e0",
   },
-  selectedBattery: {
+  selectedVehicle: {
     borderColor: "#5D7B6F",
-    backgroundColor: "#2a3a2a",
+    backgroundColor: "#f0f5f0",
   },
-  disabledBattery: {
-    opacity: 0.5,
-  },
-  batteryInfo: {
+  vehicleInfo: {
     flex: 1,
   },
-  batteryType: {
+  vehicleName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#000000",
     marginBottom: 4,
   },
-  batteryCapacity: {
+  vehiclePlate: {
     fontSize: 14,
-    color: "#888888",
-    marginBottom: 2,
-  },
-  batteryAvailable: {
-    fontSize: 12,
-    color: "#5D7B6F",
-  },
-  batteryRight: {
-    alignItems: "flex-end",
-  },
-  batteryPrice: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#5D7B6F",
-    marginBottom: 8,
+    color: "#666666",
   },
   radioButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#666666",
+    borderColor: "#e0e0e0",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -420,6 +511,41 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: "#5D7B6F",
+  },
+  durationSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000000",
+    marginBottom: 12,
+  },
+  durationOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  durationOption: {
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+  },
+  selectedDuration: {
+    borderColor: "#5D7B6F",
+    backgroundColor: "#f0f5f0",
+  },
+  durationText: {
+    fontSize: 14,
+    color: "#666666",
+    fontWeight: "500",
+  },
+  selectedDurationText: {
+    color: "#5D7B6F",
+    fontWeight: "600",
   },
   termsSection: {
     backgroundColor: "#ffffff",
@@ -435,7 +561,7 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: "#888888",
+    color: "#666666",
     lineHeight: 18,
   },
   bottomActions: {
@@ -443,7 +569,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: "#3a3a3a",
+    borderTopColor: "#e0e0e0",
   },
   selectedInfo: {
     alignItems: "center",
@@ -461,11 +587,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   confirmButtonDisabled: {
-    backgroundColor: "#666666",
+    backgroundColor: "#cccccc",
   },
   confirmButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000000",
+    color: "#ffffff",
   },
 });

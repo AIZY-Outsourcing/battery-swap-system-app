@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,20 +7,15 @@ import {
   SafeAreaView,
   FlatList,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
-
-interface PaymentRecord {
-  id: string;
-  type: "topup" | "swap" | "subscription" | "refund";
-  amount: number;
-  description: string;
-  timestamp: string;
-  status: "completed" | "pending" | "failed";
-  paymentMethod?: string;
-  reference?: string;
-}
+import {
+  paymentService,
+  PaymentTransaction,
+} from "../../../services/api/PaymentService";
 
 interface PaymentHistoryScreenProps {
   navigation: any;
@@ -30,84 +25,31 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
   navigation,
 }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
 
-  const mockPaymentHistory: PaymentRecord[] = [
-    {
-      id: "1",
-      type: "swap",
-      amount: -15000,
-      description: "Đổi pin tại Vincom Bà Triệu",
-      timestamp: "2024-12-21 14:32:15",
-      status: "completed",
-      paymentMethod: "Ví BSS",
-      reference: "BSS202412211432",
-    },
-    {
-      id: "2",
-      type: "topup",
-      amount: 100000,
-      description: "Nạp tiền vào ví BSS",
-      timestamp: "2024-12-20 09:15:30",
-      status: "completed",
-      paymentMethod: "Thẻ Visa *1234",
-      reference: "TOP202412200915",
-    },
-    {
-      id: "3",
-      type: "swap",
-      amount: -15000,
-      description: "Đổi pin tại Big C Thăng Long",
-      timestamp: "2024-12-19 16:45:22",
-      status: "completed",
-      paymentMethod: "Ví BSS",
-      reference: "BSS202412191645",
-    },
-    {
-      id: "4",
-      type: "subscription",
-      amount: -99000,
-      description: "Gói VIP tháng 12/2024",
-      timestamp: "2024-12-01 00:00:00",
-      status: "completed",
-      paymentMethod: "MoMo",
-      reference: "SUB202412010000",
-    },
-    {
-      id: "5",
-      type: "refund",
-      amount: 15000,
-      description: "Hoàn tiền - Đổi pin thất bại",
-      timestamp: "2024-11-28 11:30:45",
-      status: "completed",
-      paymentMethod: "Ví BSS",
-      reference: "REF202411281130",
-    },
-    {
-      id: "6",
-      type: "topup",
-      amount: 200000,
-      description: "Nạp tiền vào ví BSS",
-      timestamp: "2024-11-25 14:20:10",
-      status: "failed",
-      paymentMethod: "Vietcombank *5678",
-      reference: "TOP202411251420",
-    },
-  ];
+  useEffect(() => {
+    loadTransactions();
+  }, []);
 
-  const filters = [
-    { id: "all", label: "Tất cả" },
-    { id: "topup", label: "Nạp tiền" },
-    { id: "swap", label: "Đổi pin" },
-    { id: "subscription", label: "Đăng ký" },
-    { id: "refund", label: "Hoàn tiền" },
-  ];
+  const loadTransactions = async () => {
+    try {
+      setLoading(true);
+      const response = await paymentService.getMyTransactions();
+      setTransactions(response.data || []);
+    } catch (error) {
+      console.error("Error loading transactions:", error);
+      Alert.alert("Lỗi", "Không thể tải lịch sử thanh toán");
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
+    await loadTransactions();
+    setRefreshing(false);
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -136,41 +78,6 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "topup":
-        return "💰";
-      case "swap":
-        return (
-          <MaterialCommunityIcons
-            name="battery-charging-medium"
-            size={16}
-            color="#fff"
-          />
-        );
-      case "subscription":
-        return "⭐";
-      case "refund":
-        return "↩️";
-      default:
-        return "💳";
-    }
-  };
-
-  const getTypeColor = (type: string, amount: number) => {
-    if (amount > 0) {
-      return theme.colors.success;
-    }
-    switch (type) {
-      case "swap":
-        return theme.colors.primary;
-      case "subscription":
-        return theme.colors.accent;
-      default:
-        return theme.colors.error;
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -178,6 +85,7 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
       case "pending":
         return theme.colors.warning;
       case "failed":
+      case "refunded":
         return theme.colors.error;
       default:
         return theme.colors.text.secondary;
@@ -192,61 +100,95 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
         return "Đang xử lý";
       case "failed":
         return "Thất bại";
+      case "refunded":
+        return "Hoàn tiền";
       default:
         return "Không xác định";
     }
   };
 
-  const renderPaymentItem = ({ item }: { item: PaymentRecord }) => (
-    <TouchableOpacity style={styles.paymentItem}>
-      <View style={styles.paymentIcon}>
-        <Text style={styles.iconText}>{getTypeIcon(item.type)}</Text>
-      </View>
+  const renderPaymentItem = ({ item }: { item: PaymentTransaction }) => {
+    const payment = item.payment;
+    const amount = payment ? parseFloat(payment.amount) : 0;
 
-      <View style={styles.paymentInfo}>
-        <Text style={styles.description}>{item.description}</Text>
-        <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
-        {item.paymentMethod && (
-          <Text style={styles.paymentMethod}>{item.paymentMethod}</Text>
-        )}
-        {item.reference && (
-          <Text style={styles.reference}>Ref: {item.reference}</Text>
-        )}
-      </View>
-
-      <View style={styles.paymentAmount}>
-        <Text
-          style={[
-            styles.amount,
-            {
-              color: getTypeColor(item.type, item.amount),
-            },
-          ]}
-        >
-          {item.amount > 0 ? "+" : ""}
-          {formatCurrency(item.amount)}
-        </Text>
-        <View style={styles.statusContainer}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          />
-          <Text
-            style={[styles.statusText, { color: getStatusColor(item.status) }]}
-          >
-            {getStatusText(item.status)}
-          </Text>
+    return (
+      <TouchableOpacity style={styles.paymentItem}>
+        <View style={styles.paymentIcon}>
+          <Text style={styles.iconText}>💳</Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
 
-  const filteredHistory =
-    selectedFilter === "all"
-      ? mockPaymentHistory
-      : mockPaymentHistory.filter((item) => item.type === selectedFilter);
+        <View style={styles.paymentInfo}>
+          <Text style={styles.description}>
+            {payment?.content || "Giao dịch thanh toán"}
+          </Text>
+          <Text style={styles.timestamp}>
+            {formatDate(item.transaction_date)}
+          </Text>
+          {payment?.code && (
+            <Text style={styles.reference}>Mã: {payment.code}</Text>
+          )}
+        </View>
+
+        <View style={styles.paymentAmount}>
+          <Text
+            style={[
+              styles.amount,
+              {
+                color: amount > 0 ? theme.colors.success : theme.colors.error,
+              },
+            ]}
+          >
+            {formatCurrency(amount)}
+          </Text>
+          <View style={styles.statusContainer}>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: getStatusColor(item.status) },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(item.status) },
+              ]}
+            >
+              {getStatusText(item.status)}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Calculate summary stats
+  const totalTransactions = transactions.length;
+  const completedTransactions = transactions.filter(
+    (t) => t.status === "completed"
+  );
+  const totalAmount = completedTransactions.reduce((sum, t) => {
+    return sum + (t.payment ? parseFloat(t.payment.amount) : 0);
+  }, 0);
+
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Lịch sử thanh toán</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -262,55 +204,22 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
         <View style={styles.placeholder} />
       </View>
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={filters}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                selectedFilter === item.id && styles.filterButtonActive,
-              ]}
-              onPress={() => setSelectedFilter(item.id)}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  selectedFilter === item.id && styles.filterButtonTextActive,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-
       {/* Summary Stats */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>6</Text>
+          <Text style={styles.summaryValue}>{totalTransactions}</Text>
           <Text style={styles.summaryLabel}>Giao dịch</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>285.000 VND</Text>
-          <Text style={styles.summaryLabel}>Tổng chi tiêu</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>315.000 VND</Text>
-          <Text style={styles.summaryLabel}>Tổng nạp</Text>
+          <Text style={styles.summaryValue}>{formatCurrency(totalAmount)}</Text>
+          <Text style={styles.summaryLabel}>Tổng thanh toán</Text>
         </View>
       </View>
 
       {/* Payment History List */}
       <FlatList
-        data={filteredHistory}
+        data={transactions}
         keyExtractor={(item) => item.id}
         renderItem={renderPaymentItem}
         contentContainerStyle={styles.listContainer}
@@ -358,27 +267,10 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
-  filterContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.surface.elevated,
-    marginRight: 8,
-  },
-  filterButtonActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    fontWeight: "500",
-  },
-  filterButtonTextActive: {
-    color: "#fff",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   summaryContainer: {
     flexDirection: "row",
@@ -443,11 +335,6 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 12,
     color: theme.colors.text.secondary,
-    marginBottom: 2,
-  },
-  paymentMethod: {
-    fontSize: 11,
-    color: theme.colors.text.tertiary,
     marginBottom: 2,
   },
   reference: {

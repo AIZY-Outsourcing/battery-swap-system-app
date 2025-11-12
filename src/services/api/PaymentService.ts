@@ -1,5 +1,5 @@
+import { ApiResponse } from "@/src/types";
 import { api } from "../api";
-import { ApiResponse } from "./types";
 
 export interface Payment {
   id: string;
@@ -158,16 +158,20 @@ export interface PaymentListParams {
 class PaymentService {
   private baseUrl = "/api/v1/payments";
 
-  async getPayments(params: PaymentListParams = {}): Promise<ApiResponse<PaymentListResponse>> {
+  async getPayments(
+    params: PaymentListParams = {}
+  ): Promise<ApiResponse<PaymentListResponse>> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params.page) queryParams.append("page", params.page.toString());
       if (params.limit) queryParams.append("limit", params.limit.toString());
       if (params.sortBy) queryParams.append("sortBy", params.sortBy);
       if (params.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-      const url = `${this.baseUrl}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+      const url = `${this.baseUrl}${
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      }`;
 
       console.log("🔍 [PaymentService] GET payments:", url);
       console.log("🔍 [PaymentService] Params:", params);
@@ -183,17 +187,43 @@ class PaymentService {
       };
     } catch (error: any) {
       console.error("❌ [PaymentService] GET error:", error);
-      console.error("❌ [PaymentService] Error response:", error.response?.data);
+      console.error(
+        "❌ [PaymentService] Error response:",
+        error.response?.data
+      );
 
       return {
         success: false,
         error: {
           code: error.response?.status?.toString() || "UNKNOWN_ERROR",
-          message: error.response?.data?.message || error.message || "Failed to fetch payments",
+          message:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to fetch payments",
         },
       };
     }
   }
+
+  /**
+   * Get payment transactions for current user (transaction history)
+   */
+  async getMyTransactions(): Promise<{ data: PaymentTransaction[] }> {
+    const response = await api.get<{ data: PaymentTransaction[] }>(
+      "/payment-transactions/me"
+    );
+    return response.data;
+  }
+}
+
+export interface PaymentTransaction {
+  id: string;
+  payment_id: string;
+  status: "pending" | "completed" | "failed" | "refunded";
+  transaction_date: string;
+  created_at: string;
+  updated_at: string;
+  payment?: Payment;
 }
 
 export const paymentService = new PaymentService();

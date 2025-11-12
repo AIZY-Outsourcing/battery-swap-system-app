@@ -10,13 +10,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
 import { getStationById } from "../../../services/api/StationService";
-import ReserveModal from "../components/ReserveModal";
 import { track } from "../../../services/analytics";
 
 export default function StationDetailScreen({ route, navigation }: any) {
   const { stationId } = route.params as { stationId: string | number };
   const [station, setStation] = useState<any | null>(null);
-  const [reserveOpen, setReserveOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +79,13 @@ export default function StationDetailScreen({ route, navigation }: any) {
               📍 {station.address}
             </Text>
           )}
+          {!!station?.city && (
+            <Text
+              style={[styles.address, { color: theme.colors.text.secondary }]}
+            >
+              🏙️ {station.city}
+            </Text>
+          )}
 
           {error ? (
             <Text
@@ -123,24 +128,46 @@ export default function StationDetailScreen({ route, navigation }: any) {
                   Tổng pin
                 </Text>
               </View>
-              <View style={styles.batteryStatus}>
-                <Text
-                  style={[
-                    styles.batteryCount,
-                    { color: theme.colors.text.primary },
-                  ]}
-                >
-                  {station?.openHours || ""}
-                </Text>
-                <Text
-                  style={[
-                    styles.batteryLabel,
-                    { color: theme.colors.text.secondary },
-                  ]}
-                >
-                  Giờ hoạt động
-                </Text>
-              </View>
+              {station?.charging !== undefined && (
+                <View style={styles.batteryStatus}>
+                  <Text
+                    style={[
+                      styles.batteryCount,
+                      { color: theme.colors.warning },
+                    ]}
+                  >
+                    {station.charging}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.batteryLabel,
+                      { color: theme.colors.text.secondary },
+                    ]}
+                  >
+                    Đang sạc
+                  </Text>
+                </View>
+              )}
+              {station?.reserved !== undefined && station.reserved > 0 && (
+                <View style={styles.batteryStatus}>
+                  <Text
+                    style={[
+                      styles.batteryCount,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {station.reserved}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.batteryLabel,
+                      { color: theme.colors.text.secondary },
+                    ]}
+                  >
+                    Đã đặt
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -151,7 +178,9 @@ export default function StationDetailScreen({ route, navigation }: any) {
                 { backgroundColor: theme.colors.primary },
               ]}
               onPress={() => {
-                setReserveOpen(true);
+                navigation.navigate("ReservationConfirm", {
+                  stationId: String(stationId),
+                });
                 track({ name: "station_reserve_open", stationId });
               }}
             >
@@ -181,7 +210,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                 { borderColor: theme.colors.primary },
               ]}
               onPress={() => {
-                navigation.getParent()?.navigate("QRScan");
+                navigation.navigate("QRScan");
                 track({ name: "station_qr_open", stationId });
               }}
             >
@@ -197,15 +226,6 @@ export default function StationDetailScreen({ route, navigation }: any) {
           </View>
         </View>
       </ScrollView>
-
-      {station && (
-        <ReserveModal
-          visible={reserveOpen}
-          stationName={station.name}
-          stationId={String(station.id)}
-          onClose={() => setReserveOpen(false)}
-        />
-      )}
     </SafeAreaView>
   );
 }

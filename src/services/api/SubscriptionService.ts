@@ -30,6 +30,29 @@ export interface SubscriptionPackagesParams {
   sortOrder?: "asc" | "desc";
 }
 
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  package_id: string;
+  start_date: string;
+  end_date: string;
+  status: "active" | "expired" | "cancelled";
+  remaining_quota_swaps: number; // Backend field name
+  order_id: string;
+  created_at: string;
+  updated_at: string;
+  package?: SubscriptionPackage;
+  user?: any;
+}
+
+export interface UserSubscriptionsResponse {
+  data: UserSubscription[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 class SubscriptionService {
   private baseUrl: string = "/subscription-packages";
   private static DEBUG: boolean =
@@ -42,20 +65,22 @@ class SubscriptionService {
   ): Promise<ApiResponse<SubscriptionPackagesResponse>> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params.page) queryParams.append("page", params.page.toString());
       if (params.limit) queryParams.append("limit", params.limit.toString());
       if (params.sortBy) queryParams.append("sortBy", params.sortBy);
       if (params.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-      const url = `${this.baseUrl}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+      const url = `${this.baseUrl}${
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      }`;
 
       if (SubscriptionService.DEBUG) {
         console.log("[subscription] ⇢ GET", url);
       }
 
       const response = await api.get(url);
-      
+
       if (SubscriptionService.DEBUG) {
         console.log("[subscription] ⇠ GET", url, "→", response.status);
       }
@@ -68,12 +93,65 @@ class SubscriptionService {
       if (SubscriptionService.DEBUG) {
         console.error("[subscription] GET error:", error);
       }
-      
+
       return {
         success: false,
         error: {
           code: error.response?.status?.toString() || "UNKNOWN_ERROR",
-          message: error.response?.data?.message || error.message || "Failed to fetch subscription packages",
+          message:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to fetch subscription packages",
+        },
+      };
+    }
+  }
+
+  /**
+   * Get current user's subscriptions
+   */
+  async getMySubscriptions(
+    params: SubscriptionPackagesParams = {}
+  ): Promise<ApiResponse<UserSubscriptionsResponse>> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params.page) queryParams.append("page", params.page.toString());
+      if (params.limit) queryParams.append("limit", params.limit.toString());
+      if (params.sortBy) queryParams.append("sortBy", params.sortBy);
+      if (params.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+
+      const url = `/subscriptions/me${
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      }`;
+
+      if (SubscriptionService.DEBUG) {
+        console.log("[subscription] ⇢ GET", url);
+      }
+
+      const response = await api.get(url);
+
+      if (SubscriptionService.DEBUG) {
+        console.log("[subscription] ⇠ GET", url, "→", response.status);
+      }
+
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    } catch (error: any) {
+      if (SubscriptionService.DEBUG) {
+        console.error("[subscription] GET error:", error);
+      }
+
+      return {
+        success: false,
+        error: {
+          code: error.response?.status?.toString() || "UNKNOWN_ERROR",
+          message:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to fetch user subscriptions",
         },
       };
     }

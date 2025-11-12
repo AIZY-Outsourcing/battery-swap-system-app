@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   View,
@@ -9,6 +9,7 @@ import {
   Alert,
   Switch,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import {
@@ -19,9 +20,15 @@ import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import AuthService from "../../../services/auth/AuthService";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import { mockUser, mockSubscriptions } from "../../../data/mockData";
 import { styleTokens } from "../../../styles/tokens";
 import { useAuthStore } from "../../../store/authStore";
+import subscriptionService, {
+  UserSubscription,
+} from "../../../services/api/SubscriptionService";
+import {
+  swapCreditsService,
+  type SwapCredits,
+} from "../../../services/api/SwapCreditsService";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, "Profile">,
@@ -86,19 +93,81 @@ export default function ProfileScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [faceIDEnabled, setFaceIDEnabled] = useState(true);
-  const activeSubscription = mockSubscriptions[0];
+  const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(true);
+  const [swapCredits, setSwapCredits] = useState<SwapCredits | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(true);
   const [language, setLanguage] = useState<"vi" | "en">(
     i18n.language as "vi" | "en"
   );
 
-  // Use real user data or fallback to mock
+  const activeSubscription = subscriptions.find((s) => s.status === "active");
+
+  // Calculate TOTAL remaining swaps: single credits + subscription quota
+  const totalSwaps =
+    (swapCredits?.remaining_credits ?? 0) +
+    (swapCredits?.total_remaining_quota_swaps ?? 0);
+
+  // Load user subscriptions and swap credits
+  useEffect(() => {
+    loadSubscriptions();
+    loadSwapCredits();
+  }, []);
+
+  const loadSwapCredits = async () => {
+    try {
+      setLoadingCredits(true);
+      const response = await swapCreditsService.getMySwapCredits();
+      if (response.success && response.data) {
+        console.log("📊 [ProfileScreen] Swap credits loaded:", response.data);
+        setSwapCredits(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading swap credits:", error);
+    } finally {
+      setLoadingCredits(false);
+    }
+  };
+
+  const loadSubscriptions = async () => {
+    try {
+      setLoadingSubscriptions(true);
+      const response = await subscriptionService.getMySubscriptions({
+        limit: 10,
+      });
+      if (response.success && response.data) {
+        console.log(
+          "📊 [ProfileScreen] Subscriptions loaded:",
+          response.data.data
+        );
+        setSubscriptions(response.data.data);
+
+        const active = response.data.data.find(
+          (s: UserSubscription) => s.status === "active"
+        );
+        console.log("✅ [ProfileScreen] Active subscription:", active);
+        if (active) {
+          console.log(
+            "🔢 [ProfileScreen] Remaining swaps:",
+            active.remaining_quota_swaps
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error loading subscriptions:", error);
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
+
+  // Use real user data
   const displayName = user
     ? `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
       user.email ||
       "User"
-    : mockUser.name || "User";
-  const displayPhone = user?.phone || mockUser.phone;
-  const displayEmail = user?.email || mockUser.email;
+    : "User";
+  const displayPhone = user?.phone || "";
+  const displayEmail = user?.email || "";
   const userInitial =
     displayName && displayName.length > 0
       ? displayName.charAt(0).toUpperCase()
@@ -178,10 +247,10 @@ export default function ProfileScreen({ navigation }: Props) {
         key: "support",
         icon: "message-question-outline",
         label: t("profile.supportRequest"),
-        onPress: devAlert,
+        onPress: () => navigation.navigate("SupportRequest"),
       },
     ],
-    [t]
+    [t, navigation]
   );
   const legalMenu: MenuItemDef[] = useMemo(
     () => [
@@ -228,7 +297,7 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
             <View style={styles.userCol}>
               <Text style={styles.name}>{displayName}</Text>
-              <Text style={styles.meta}>{displayPhone}</Text>
+              {/* <Text style={styles.meta}>{displayPhone}</Text> */}
               <Text style={styles.metaSmall}>{displayEmail}</Text>
               {vehicle && (
                 <View style={styles.vehicleBadge}>
@@ -250,7 +319,7 @@ export default function ProfileScreen({ navigation }: Props) {
                     color="#ffffff"
                   />
                   <Text style={styles.subscriptionText}>
-                    {activeSubscription.name}
+                    {activeSubscription.package?.name || "Premium"}
                   </Text>
                 </View>
               )}
@@ -258,18 +327,31 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
           <View style={styles.quickStatsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>{mockSubscriptions.length}</Text>
-              <Text style={styles.statLabel}>{t("subscriptions")}</Text>
+              {loadingSubscriptions ? (
+                <ActivityIndicator
+                  size="small"
+                  color={styleTokens.colors.primary}
+                />
+              ) : (
+                <>
+                  <Text style={styles.statValue}>{subscriptions.length}</Text>
+                  <Text style={styles.statLabel}>{t("subscriptions")}</Text>
+                </>
+              )}
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statValue}>--</Text>
-              <Text style={styles.statLabel}>{t("swapsPerMonth")}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>--</Text>
-              <Text style={styles.statLabel}>{t("points")}</Text>
+              {loadingCredits ? (
+                <ActivityIndicator
+                  size="small"
+                  color={styleTokens.colors.primary}
+                />
+              ) : (
+                <>
+                  <Text style={styles.statValue}>{totalSwaps}</Text>
+                  <Text style={styles.statLabel}>{t("swapsRemaining")}</Text>
+                </>
+              )}
             </View>
           </View>
         </View>

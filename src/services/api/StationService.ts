@@ -46,14 +46,18 @@ export async function listStations(
   params: ListParams = {}
 ): Promise<StationDto[]> {
   try {
+    // Use /stations instead of /stations/nearby when no location provided
+    const endpoint =
+      params.lat && params.lng ? "/stations/nearby" : "/stations";
+
     if (__DEV__) {
       console.log(
-        "[StationService.listStations] calling GET /stations/nearby with params:",
+        `[StationService.listStations] calling GET ${endpoint} with params:`,
         params
       );
     }
 
-    const res = await api.get("/stations/nearby", { params });
+    const res = await api.get(endpoint, { params });
 
     if (__DEV__) {
       console.log("[StationService.listStations] response:", res.data);

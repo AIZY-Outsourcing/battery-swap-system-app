@@ -23,7 +23,10 @@ import { useStations } from "../hooks/useStations";
 import { useAuthStore } from "../../../store/authStore";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { swapCreditsService, type SwapCredits } from "../../../services/api/SwapCreditsService";
+import {
+  swapCreditsService,
+  type SwapCredits,
+} from "../../../services/api/SwapCreditsService";
 
 type DistanceOpt = 5 | 10 | 20;
 type BatteryOpt = "A" | "B" | "C" | "";
@@ -41,8 +44,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [batteryType, setBatteryType] = useState<BatteryOpt>("");
   const [sort, setSort] = useState<SortOpt>("nearest");
-  const credits = useAuthStore((s) => s.user?.swapCredits ?? 0);
-  
+
   // Swap credits API state
   const [swapCredits, setSwapCredits] = useState<SwapCredits | null>(null);
   const [loadingCredits, setLoadingCredits] = useState(false);
@@ -62,7 +64,7 @@ export default function HomeScreen({ navigation }: Props) {
 
     try {
       const response = await swapCreditsService.getMySwapCredits();
-      
+
       if (response.success && response.data) {
         setSwapCredits(response.data);
       } else {
@@ -79,22 +81,29 @@ export default function HomeScreen({ navigation }: Props) {
     fetchSwapCredits();
   }, []);
 
+  // Calculate total available credits
+  const totalCredits =
+    (swapCredits?.remaining_credits ?? 0) +
+    (swapCredits?.total_remaining_quota_swaps ?? 0);
+
   const renderStationCard = ({ item }: { item: any }) => (
     <View style={styles.stationCard}>
       <View style={styles.stationHeader}>
         <View style={styles.stationInfo}>
           <Text style={styles.stationName}>{item.name}</Text>
           <Text style={styles.stationAddress}>{item.address}</Text>
-          <View style={styles.stationDistanceRow}>
-            <MaterialCommunityIcons
-              name="map-marker"
-              size={14}
-              color="#5D7B6F"
-            />
-            <Text style={styles.stationDistance}>
-              {item.distance ? `${item.distance.toFixed(1)} km` : "N/A"}
-            </Text>
-          </View>
+          {item.distance && (
+            <View style={styles.stationDistanceRow}>
+              <MaterialCommunityIcons
+                name="map-marker"
+                size={14}
+                color="#5D7B6F"
+              />
+              <Text style={styles.stationDistance}>
+                {item.distance.toFixed(1)} km
+              </Text>
+            </View>
+          )}
         </View>
         <View style={styles.stationStatus}>
           <View
@@ -121,7 +130,6 @@ export default function HomeScreen({ navigation }: Props) {
               {item.available}/{item.capacity}
             </Text>
           </View>
-          <Text style={styles.batteryTypes}>{t("home.batteryTypes")}</Text>
         </View>
         <View style={styles.stationActions}>
           <TouchableOpacity
@@ -137,10 +145,10 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity
             style={[
               styles.reserveButton,
-              (credits <= 0 || item.available <= 0) &&
+              (totalCredits <= 0 || item.available <= 0) &&
                 styles.reserveButtonDisabled,
             ]}
-            disabled={credits <= 0 || item.available <= 0}
+            disabled={totalCredits <= 0 || item.available <= 0}
             onPress={() =>
               navigation
                 .getParent()
@@ -148,7 +156,7 @@ export default function HomeScreen({ navigation }: Props) {
             }
           >
             <Text style={styles.reserveButtonText}>
-              {credits > 0 ? t("home.reserve") : t("home.noCredits")}
+              {totalCredits > 0 ? t("home.reserve") : t("home.noCredits")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -207,7 +215,8 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.walletAmountError}>—</Text>
               ) : (
                 <Text style={styles.walletAmount}>
-                  {swapCredits?.remaining_credits || 0} {t("history.timesSuffix")}
+                  {swapCredits?.remaining_credits || 0}{" "}
+                  {t("history.timesSuffix")}
                 </Text>
               )}
             </View>
@@ -222,7 +231,8 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.walletAmountError}>—</Text>
               ) : (
                 <Text style={styles.walletAmount}>
-                  {swapCredits?.total_remaining_quota_swaps || 0} {t("history.timesSuffix")}
+                  {swapCredits?.total_remaining_quota_swaps || 0}{" "}
+                  {t("history.timesSuffix")}
                 </Text>
               )}
             </View>

@@ -11,26 +11,68 @@ import {
   RefreshControl,
 } from "react-native";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import {
-  mockSwapHistory,
-  mockSubscriptions,
-  type SwapTransaction,
-  type Subscription,
-} from "../../../data/mockData";
 import { styleTokens } from "../../../styles/tokens";
 import { orderService, type Order } from "../../../services/api/OrderService";
+import swapTransactionService, {
+  type SwapTransaction,
+} from "../../../services/api/SwapTransactionService";
+import subscriptionService, {
+  type UserSubscription,
+} from "../../../services/api/SubscriptionService";
 
 type TabKey = "swap" | "payment" | "subscription";
 
 export default function HistoryScreen() {
   const [tab, setTab] = useState<TabKey>("swap");
   const { t } = useTranslation();
-  
+
+  // Swap transactions state
+  const [swapTransactions, setSwapTransactions] = useState<SwapTransaction[]>(
+    []
+  );
+  const [loadingSwaps, setLoadingSwaps] = useState(false);
+  const [refreshingSwaps, setRefreshingSwaps] = useState(false);
+  const [swapError, setSwapError] = useState<string | null>(null);
+
   // Order API state
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [refreshingOrders, setRefreshingOrders] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+
+  // Subscription API state
+  const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
+  const [refreshingSubscriptions, setRefreshingSubscriptions] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(
+    null
+  );
+
+  // Fetch swap transactions from API
+  const fetchSwapTransactions = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshingSwaps(true);
+    } else {
+      setLoadingSwaps(true);
+    }
+    setSwapError(null);
+
+    try {
+      const transactions = await swapTransactionService.getMySwapTransactions();
+      const transactionsArray = Array.isArray(transactions) ? transactions : [];
+      setSwapTransactions(transactionsArray);
+    } catch (error: any) {
+      console.error(
+        "❌ [HistoryScreen] Error fetching swap transactions:",
+        error
+      );
+      setSwapError(error.message || "Failed to fetch swap transactions");
+      setSwapTransactions([]);
+    } finally {
+      setLoadingSwaps(false);
+      setRefreshingSwaps(false);
+    }
+  };
 
   // Fetch orders from API
   const fetchOrders = async (isRefresh = false) => {
@@ -63,31 +105,66 @@ export default function HistoryScreen() {
     }
   };
 
+  // Fetch subscriptions from API
+  const fetchSubscriptions = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshingSubscriptions(true);
+    } else {
+      setLoadingSubscriptions(true);
+    }
+    setSubscriptionError(null);
+
+    try {
+      const response = await subscriptionService.getMySubscriptions({
+        page: 1,
+        limit: 50,
+        sortBy: "created_at",
+        sortOrder: "desc",
+      });
+
+      if (response.success && response.data) {
+        setSubscriptions(response.data.data);
+      } else {
+        setSubscriptionError(
+          response.error?.message || "Failed to fetch subscriptions"
+        );
+      }
+    } catch (error: any) {
+      setSubscriptionError(error.message || "Failed to fetch subscriptions");
+    } finally {
+      setLoadingSubscriptions(false);
+      setRefreshingSubscriptions(false);
+    }
+  };
+
   useEffect(() => {
+    fetchSwapTransactions();
     fetchOrders();
+    fetchSubscriptions();
   }, []);
 
   // Derive & sort data (newest first)
-  const swapData = useMemo(
-    () =>
-      [...mockSwapHistory].sort(
-        (a, b) => b.swapDate.getTime() - a.swapDate.getTime()
-      ),
-    []
-  );
+  const swapData = useMemo(() => {
+    return [...swapTransactions].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [swapTransactions]);
   const paymentData = useMemo(
     () =>
       [...orders].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ),
     [orders]
   );
   const subscriptionData = useMemo(
     () =>
-      [...mockSubscriptions].sort(
-        (a, b) => b.startDate.getTime() - a.startDate.getTime()
+      [...subscriptions].sort(
+        (a, b) =>
+          new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
       ),
-    []
+    [subscriptions]
   );
 
   const formatCurrency = (amount: number) =>
@@ -99,10 +176,13 @@ export default function HistoryScreen() {
   const statusColor = (status: string) => {
     switch (status) {
       case "completed":
-      case "success": // payment success
+      case "success":
       case "active":
+      case "confirmed":
         return "#22c55e";
       case "pending":
+      case "in_progress":
+      case "waiting":
         return "#f59e0b";
       case "failed":
       case "cancelled":
@@ -118,7 +198,12 @@ export default function HistoryScreen() {
       case "completed":
       case "success":
         return t("status.completed");
+      case "confirmed":
+        return t("status.confirmed", { defaultValue: "Đã xác nhận" });
+      case "in_progress":
+        return t("status.inProgress", { defaultValue: "Đang thực hiện" });
       case "pending":
+      case "waiting":
         return t("status.pending");
       case "failed":
         return t("status.failed");
@@ -134,14 +219,38 @@ export default function HistoryScreen() {
   };
 
   const renderSwap = ({ item }: { item: SwapTransaction }) => {
+    // Add 7 hours for Vietnam timezone (UTC+7)
+    const swapDateUTC = new Date(
+      item.swap_order?.completed_at || item.created_at
+    );
+    const swapDate = new Date(swapDateUTC.getTime() + 7 * 60 * 60 * 1000);
+
+    const stationName =
+      item.swap_order?.station?.name || t("history.unknownStation");
+    const oldBatteryId = item.swap_order?.old_battery?.id;
+    const newBatteryId = item.swap_order?.new_battery?.id;
+    const swapStatus = item.swap_order?.status || item.status;
+
+    // Truncate battery ID to show only first 8 characters
+    const truncateBatteryId = (id: string | undefined) => {
+      if (!id) return undefined;
+      return id.length > 8 ? `${id.substring(0, 8)}...` : id;
+    };
+
+    // Truncate message to prevent overflow
+    const truncateMessage = (msg: string, maxLength: number = 60) => {
+      if (msg.length <= maxLength) return msg;
+      return `${msg.substring(0, maxLength)}...`;
+    };
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.title}>{item.stationName}</Text>
+            <Text style={styles.title}>{stationName}</Text>
             <Text style={styles.subTime}>
-              {item.swapDate.toLocaleDateString("vi-VN")} •{" "}
-              {item.swapDate.toLocaleTimeString("vi-VN", {
+              {swapDate.toLocaleDateString("vi-VN")} •{" "}
+              {swapDate.toLocaleTimeString("vi-VN", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -151,73 +260,132 @@ export default function HistoryScreen() {
             <View
               style={[
                 styles.badge,
-                { backgroundColor: statusColor(item.status) },
+                { backgroundColor: statusColor(swapStatus) },
               ]}
             >
-              <Text style={styles.badgeText}>{statusText(item.status)}</Text>
+              <Text style={styles.badgeText}>{statusText(swapStatus)}</Text>
             </View>
           </View>
         </View>
-        <View style={styles.swapBatteriesRow}>
-          <View style={styles.iconWithText}>
+
+        {/* Battery swap info */}
+        {(oldBatteryId || newBatteryId) && (
+          <View style={styles.swapBatteriesRow}>
+            {oldBatteryId ? (
+              <View style={styles.iconWithText}>
+                <MaterialCommunityIcons
+                  name="battery-outline"
+                  size={18}
+                  color="#6b7280"
+                />
+                <Text style={styles.batteryText}>
+                  {truncateBatteryId(oldBatteryId)}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.iconWithText}>
+                <MaterialCommunityIcons
+                  name="battery-outline"
+                  size={18}
+                  color="#d1d5db"
+                />
+                <Text style={[styles.batteryText, { color: "#9ca3af" }]}>
+                  {t("history.pendingReturn")}
+                </Text>
+              </View>
+            )}
             <MaterialCommunityIcons
-              name="battery-outline"
+              name="arrow-right"
               size={18}
-              color="#374151"
+              color="#9ca3af"
+              style={styles.arrowIcon}
             />
-            <Text style={styles.batteryText}>
-              {item.oldBatteryId || t("history.oldBattery")}
+            {newBatteryId ? (
+              <View style={styles.iconWithText}>
+                <MaterialCommunityIcons
+                  name="battery-high"
+                  size={18}
+                  color="#16a34a"
+                />
+                <Text style={styles.batteryText}>
+                  {truncateBatteryId(newBatteryId)}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.iconWithText}>
+                <MaterialCommunityIcons
+                  name="battery-high"
+                  size={18}
+                  color="#d1d5db"
+                />
+                <Text style={[styles.batteryText, { color: "#9ca3af" }]}>
+                  {t("history.pending")}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* SOC info - only show if both batteries have SOC */}
+        {item.swap_order?.old_battery?.soc !== undefined &&
+          item.swap_order?.new_battery?.soc !== undefined && (
+            <View style={styles.inlineMeta}>
+              <Text style={styles.metaLabel}>SOC:</Text>
+              <Text style={styles.metaValue}>
+                {item.swap_order.old_battery.soc}% →{" "}
+                {item.swap_order.new_battery.soc}%
+              </Text>
+            </View>
+          )}
+
+        {/* Show new battery SOC if only new battery available */}
+        {item.swap_order?.new_battery?.soc !== undefined &&
+          !item.swap_order?.old_battery && (
+            <View style={styles.inlineMeta}>
+              <Text style={styles.metaLabel}>
+                {t("history.newBatterySOC")}:
+              </Text>
+              <Text style={styles.metaValue}>
+                {item.swap_order.new_battery.soc}%
+              </Text>
+            </View>
+          )}
+
+        {/* Message/Note - Display as a separate note box */}
+        {item.message && (
+          <View style={styles.noteBox}>
+            <MaterialCommunityIcons
+              name="information-outline"
+              size={14}
+              color="#6b7280"
+              style={styles.noteIcon}
+            />
+            <Text
+              style={styles.noteText}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
+              {item.message}
             </Text>
           </View>
-          <MaterialCommunityIcons
-            name="arrow-right"
-            size={18}
-            color="#9ca3af"
-            style={styles.arrowIcon}
-          />
-          <View style={styles.iconWithText}>
-            <MaterialCommunityIcons
-              name="battery-high"
-              size={18}
-              color="#16a34a"
-            />
-            <Text style={styles.batteryText}>
-              {item.newBatteryId || t("history.newBattery")}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>{t("history.batteryType")}:</Text>
-          <Text style={styles.metaValue}>{item.batteryType}</Text>
-        </View>
-        <View style={styles.inlineMeta}>
-          <Text style={styles.metaLabel}>
-            {t("history.paymentMethodLabel", {
-              defaultValue: t("history.methodLabel"),
-            })}
-            :
-          </Text>
-          <Text style={styles.metaValue}>
-            {item.paymentMethod === "subscription"
-              ? t("history.paymentMethodSubscription")
-              : t("history.paymentMethodPayPerSwap")}
-          </Text>
-        </View>
+        )}
       </View>
     );
   };
 
   const renderPayment = ({ item }: { item: Order }) => {
-    const orderDate = new Date(item.created_at);
+    // Add 7 hours for Vietnam timezone (UTC+7)
+    const orderDateUTC = new Date(item.created_at);
+    const orderDate = new Date(orderDateUTC.getTime() + 7 * 60 * 60 * 1000);
     const amount = parseInt(item.total_amount.toString());
-    
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
             <Text style={styles.title}>
-              {item.type === "package" 
-                ? `Gói ${item.package?.name || "Package"}` 
+              {item.type === "package"
+                ? `Gói ${item.package?.name || "Package"}`
                 : `${item.quantity} lượt đổi`}
             </Text>
             <Text style={styles.subTime}>
@@ -270,19 +438,31 @@ export default function HistoryScreen() {
     );
   };
 
-  const renderSubscription = ({ item }: { item: Subscription }) => {
-    const period = `${item.startDate.toLocaleDateString(
+  const renderSubscription = ({ item }: { item: UserSubscription }) => {
+    // Add 7 hours for Vietnam timezone (UTC+7)
+    const startDateUTC = new Date(item.start_date);
+    const startDate = new Date(startDateUTC.getTime() + 7 * 60 * 60 * 1000);
+    const endDateUTC = new Date(item.end_date);
+    const endDate = new Date(endDateUTC.getTime() + 7 * 60 * 60 * 1000);
+
+    const period = `${startDate.toLocaleDateString(
       "vi-VN"
-    )} → ${item.endDate.toLocaleDateString("vi-VN")}`;
+    )} → ${endDate.toLocaleDateString("vi-VN")}`;
+
+    const packageName = item.package?.name || "Package";
+    const packagePrice = item.package?.price
+      ? parseInt(item.package.price.toString())
+      : 0;
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.title}>{item.name}</Text>
+            <Text style={styles.title}>{packageName}</Text>
             <Text style={styles.subTime}>{period}</Text>
           </View>
           <View style={styles.rightAlign}>
-            <Text style={styles.amount}>{formatCurrency(item.price)}</Text>
+            <Text style={styles.amount}>{formatCurrency(packagePrice)}</Text>
             <View
               style={[
                 styles.badge,
@@ -296,21 +476,21 @@ export default function HistoryScreen() {
         <View style={styles.inlineMeta}>
           <Text style={styles.metaLabel}>{t("history.typeLabel")}:</Text>
           <Text style={styles.metaValue}>
-            {item.type === "unlimited"
-              ? t("history.unlimited")
-              : `${item.swapLimit} ${t("history.timesSuffix")}`}
+            {item.package?.quota_swaps
+              ? `${item.package.quota_swaps} ${t("history.timesSuffix")}`
+              : t("history.unlimited")}
           </Text>
         </View>
         <View style={styles.inlineMeta}>
           <Text style={styles.metaLabel}>{t("history.durationLabel")}:</Text>
           <Text style={styles.metaValue}>
-            {item.duration} {t("history.daysSuffix")}
+            {item.package?.duration_days || 0} {t("history.daysSuffix")}
           </Text>
         </View>
-        {item.remainingSwaps !== undefined && (
+        {item.remaining_quota_swaps !== undefined && (
           <View style={styles.inlineMeta}>
             <Text style={styles.metaLabel}>{t("history.remainingLabel")}:</Text>
-            <Text style={styles.metaValue}>{item.remainingSwaps}</Text>
+            <Text style={styles.metaValue}>{item.remaining_quota_swaps}</Text>
           </View>
         )}
       </View>
@@ -383,7 +563,22 @@ export default function HistoryScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-      {tab === "payment" && loadingOrders ? (
+      {tab === "swap" && loadingSwaps ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5D7B6F" />
+          <Text style={styles.loadingText}>Loading swap history...</Text>
+        </View>
+      ) : tab === "swap" && swapError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{swapError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchSwapTransactions()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : tab === "payment" && loadingOrders ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#5D7B6F" />
           <Text style={styles.loadingText}>Loading orders...</Text>
@@ -391,7 +586,25 @@ export default function HistoryScreen() {
       ) : tab === "payment" && orderError ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{orderError}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => fetchOrders()}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchOrders()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : tab === "subscription" && loadingSubscriptions ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5D7B6F" />
+          <Text style={styles.loadingText}>Loading subscriptions...</Text>
+        </View>
+      ) : tab === "subscription" && subscriptionError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{subscriptionError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchSubscriptions()}
+          >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -408,10 +621,22 @@ export default function HistoryScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            tab === "payment" ? (
+            tab === "swap" ? (
+              <RefreshControl
+                refreshing={refreshingSwaps}
+                onRefresh={() => fetchSwapTransactions(true)}
+                colors={["#5D7B6F"]}
+              />
+            ) : tab === "payment" ? (
               <RefreshControl
                 refreshing={refreshingOrders}
                 onRefresh={() => fetchOrders(true)}
+                colors={["#5D7B6F"]}
+              />
+            ) : tab === "subscription" ? (
+              <RefreshControl
+                refreshing={refreshingSubscriptions}
+                onRefresh={() => fetchSubscriptions(true)}
                 colors={["#5D7B6F"]}
               />
             ) : undefined
@@ -562,6 +787,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: "#111827",
+  },
+  noteBox: {
+    flexDirection: "row",
+    backgroundColor: "#f3f4f6",
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 4,
+    alignItems: "flex-start",
+  },
+  noteIcon: {
+    marginRight: 6,
+    marginTop: 1,
+  },
+  noteText: {
+    flex: 1,
+    fontSize: 11,
+    color: "#4b5563",
+    lineHeight: 16,
   },
   emptyWrap: {
     flex: 1,

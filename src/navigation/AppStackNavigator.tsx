@@ -42,6 +42,9 @@ import InvoiceScreen from "../features/invoice/screens/InvoiceScreen";
 import RatingHistoryScreen, {
   RatingModal,
 } from "../features/support/screens/RatingScreen";
+import CreateSupportRequestScreen from "../features/support/screens/CreateSupportRequestScreen";
+import SupportRequestScreen from "../features/support/screens/SupportRequestScreen";
+import ViewSupportRequestScreen from "../features/support/screens/ViewSupportRequestScreen";
 import StationMapScreen from "../features/station/screens/StationMapScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -92,9 +95,7 @@ export default function AppStackNavigator() {
         name="QRScan"
         component={QRScanScreen}
         options={{
-          headerShown: true,
-          title: "QR",
-          headerBackTitle: t("common.back"),
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -227,6 +228,29 @@ export default function AppStackNavigator() {
       <Stack.Screen
         name="StationRating"
         component={RatingHistoryScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+
+      {/* Support Screens */}
+      <Stack.Screen
+        name="CreateSupportRequest"
+        component={CreateSupportRequestScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="SupportRequest"
+        component={SupportRequestScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="SupportRequestDetail"
+        component={ViewSupportRequestScreen}
         options={{
           headerShown: false,
         }}

@@ -1,29 +1,63 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
+import { useAuthStore } from "../../../store/authStore";
+import UserService from "../../../services/api/UserService";
 
 export default function EditProfileScreen({ navigation }: any) {
+  const { user: authUser, setUser } = useAuthStore();
+  const [loading, setLoading] = useState(false);
   const [profile, setProfile] = React.useState({
-    fullName: "Nguyễn Văn A",
-    phone: "0901234567",
-    email: "user@example.com",
-    vehicleModel: "VinFast Evo200",
-    licensePlate: "59H1-23456",
-    vin: "VNFEV200123456789",
-    manufactureYear: "2023",
+    firstName: authUser?.firstName || "",
+    lastName: authUser?.lastName || "",
+    phone: authUser?.phone || "",
+    email: authUser?.email || "",
   });
 
-  const handleSave = () => {
-    // Save profile changes
-    console.log("Save profile:", profile);
-    navigation.goBack();
+  const handleSave = async () => {
+    if (!authUser?.id) {
+      Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng");
+      return;
+    }
+
+    // Combine firstName and lastName into name for backend
+    const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+
+    try {
+      setLoading(true);
+      const response = await UserService.updateProfile(authUser.id, {
+        name: fullName,
+        phone: profile.phone,
+        email: profile.email,
+      });
+
+      // Update local store with updated user
+      setUser({
+        ...authUser,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone,
+        email: profile.email,
+      });
+
+      Alert.alert("Thành công", "Cập nhật thông tin thành công", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật thông tin");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateField = (field: string, value: string) => {
@@ -50,7 +84,7 @@ export default function EditProfileScreen({ navigation }: any) {
             <Text
               style={[styles.label, { color: theme.colors.text.secondary }]}
             >
-              Họ và tên
+              Họ
             </Text>
             <TextInput
               style={[
@@ -60,9 +94,29 @@ export default function EditProfileScreen({ navigation }: any) {
                   borderColor: theme.colors.border.default,
                 },
               ]}
-              value={profile.fullName}
-              onChangeText={(value) => updateField("fullName", value)}
-              placeholder="Nhập họ và tên"
+              value={profile.firstName}
+              onChangeText={(value) => updateField("firstName", value)}
+              placeholder="Nhập họ"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text
+              style={[styles.label, { color: theme.colors.text.secondary }]}
+            >
+              Tên
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  color: theme.colors.text.primary,
+                  borderColor: theme.colors.border.default,
+                },
+              ]}
+              value={profile.lastName}
+              onChangeText={(value) => updateField("lastName", value)}
+              placeholder="Nhập tên"
             />
           </View>
 
@@ -109,102 +163,17 @@ export default function EditProfileScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Vehicle Info */}
-        <View style={styles.section}>
-          <Text
-            style={[styles.sectionTitle, { color: theme.colors.text.primary }]}
-          >
-            Thông tin xe
-          </Text>
-
-          <View style={styles.inputContainer}>
-            <Text
-              style={[styles.label, { color: theme.colors.text.secondary }]}
-            >
-              Model xe
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text.primary,
-                  borderColor: theme.colors.border.default,
-                },
-              ]}
-              value={profile.vehicleModel}
-              onChangeText={(value) => updateField("vehicleModel", value)}
-              placeholder="Nhập model xe"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text
-              style={[styles.label, { color: theme.colors.text.secondary }]}
-            >
-              Biển số xe
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text.primary,
-                  borderColor: theme.colors.border.default,
-                },
-              ]}
-              value={profile.licensePlate}
-              onChangeText={(value) => updateField("licensePlate", value)}
-              placeholder="Nhập biển số xe"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text
-              style={[styles.label, { color: theme.colors.text.secondary }]}
-            >
-              Số VIN
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text.primary,
-                  borderColor: theme.colors.border.default,
-                },
-              ]}
-              value={profile.vin}
-              onChangeText={(value) => updateField("vin", value)}
-              placeholder="Nhập số VIN"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text
-              style={[styles.label, { color: theme.colors.text.secondary }]}
-            >
-              Năm sản xuất
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text.primary,
-                  borderColor: theme.colors.border.default,
-                },
-              ]}
-              value={profile.manufactureYear}
-              onChangeText={(value) => updateField("manufactureYear", value)}
-              placeholder="Nhập năm sản xuất"
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
         {/* Save Button */}
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: theme.colors.primary }]}
           onPress={handleSave}
+          disabled={loading}
         >
-          <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>

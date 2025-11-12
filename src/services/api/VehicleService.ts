@@ -482,4 +482,8 @@ export default {
   createVehicleAndStore,
   getVehicleModelOptions,
   getBatteryTypeOptions,
+  getMyVehicles,
+  getVehicleById,
+  updateVehicle,
+  deleteVehicle,
 };

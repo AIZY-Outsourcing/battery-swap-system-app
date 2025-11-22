@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import {
@@ -24,6 +25,7 @@ interface PaymentHistoryScreenProps {
 export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
   navigation,
 }) => {
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
@@ -39,7 +41,7 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
       setTransactions(response.data || []);
     } catch (error) {
       console.error("Error loading transactions:", error);
-      Alert.alert("Lỗi", "Không thể tải lịch sử thanh toán");
+      Alert.alert(t("support.error"), t("payment.history.error"));
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -180,7 +182,7 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
           >
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Lịch sử thanh toán</Text>
+          <Text style={styles.headerTitle}>{t("payment.history.title")}</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
@@ -200,7 +202,7 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
         >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lịch sử thanh toán</Text>
+        <Text style={styles.headerTitle}>{t("payment.history.title")}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -208,12 +210,16 @@ export const PaymentHistoryScreen: React.FC<PaymentHistoryScreenProps> = ({
       <View style={styles.summaryContainer}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryValue}>{totalTransactions}</Text>
-          <Text style={styles.summaryLabel}>Giao dịch</Text>
+          <Text style={styles.summaryLabel}>
+            {t("payment.history.transaction")}
+          </Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
           <Text style={styles.summaryValue}>{formatCurrency(totalAmount)}</Text>
-          <Text style={styles.summaryLabel}>Tổng thanh toán</Text>
+          <Text style={styles.summaryLabel}>
+            {t("payment.history.summaryLabel")}
+          </Text>
         </View>
       </View>
 

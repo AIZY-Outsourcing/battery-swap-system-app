@@ -293,7 +293,7 @@ export default function AppStackNavigator() {
         component={MyVehiclesScreen}
         options={{
           headerShown: true,
-          title: "Xe của tôi",
+          title: t("vehicle.myVehicles"),
           headerBackTitle: t("common.back"),
         }}
       />

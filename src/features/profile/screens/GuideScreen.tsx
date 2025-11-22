@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-} from "react-native";
+import { View, Text, StyleSheet, SafeAreaView, ScrollView } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../navigation/types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -18,66 +12,66 @@ export default function GuideScreen({}: Props) {
 
   const guideSections = [
     {
-      title: "Cách sử dụng ứng dụng",
+      title: t("guide.howToUse.title"),
       icon: "book-open-page-variant",
       content: [
-        "1. Tìm trạm đổi pin gần bạn trên bản đồ hoặc danh sách",
-        "2. Chọn trạm và xem thông tin chi tiết về pin có sẵn",
-        "3. Đặt trước pin nếu cần để đảm bảo có pin khi đến",
-        "4. Quét mã QR tại trạm để bắt đầu quá trình đổi pin",
-        "5. Làm theo hướng dẫn trên màn hình để hoàn tất đổi pin",
+        t("guide.step1"),
+        t("guide.step2"),
+        t("guide.step3"),
+        t("guide.step4"),
+        t("guide.step5"),
       ],
     },
     {
-      title: "Đặt trước pin",
+      title: t("guide.reservation.title"),
       icon: "calendar-clock",
       content: [
-        "Đặt trước pin giúp bạn đảm bảo có pin sẵn sàng khi đến trạm",
-        "Bạn có thể đặt trước tối đa 30 phút trước khi đến",
-        "Pin được giữ trong 15 phút sau thời gian dự kiến đến",
-        "Hủy đặt trước nếu không thể đến đúng giờ để tránh mất lượt",
+        t("guide.reservation.content1"),
+        t("guide.reservation.content2"),
+        t("guide.reservation.content3"),
+        t("guide.reservation.content4"),
       ],
     },
     {
-      title: "Quy trình đổi pin",
+      title: t("guide.swapProcess.title"),
       icon: "swap-horizontal",
       content: [
-        "Bước 1: Quét mã QR tại kiosk đổi pin",
-        "Bước 2: Xác thực bằng mã PIN của bạn",
-        "Bước 3: Mở cửa kiosk và đặt pin cũ vào",
-        "Bước 4: Đợi hệ thống kiểm tra và sạc pin cũ",
-        "Bước 5: Lấy pin mới từ kiosk",
-        "Bước 6: Đóng cửa kiosk và hoàn tất",
+        t("guide.swapProcess.step1"),
+        t("guide.swapProcess.step2"),
+        t("guide.swapProcess.step3"),
+        t("guide.swapProcess.step4"),
+        t("guide.swapProcess.step5"),
+        t("guide.swapProcess.step6"),
       ],
     },
     {
-      title: "Quản lý lượt đổi",
+      title: t("guide.swapManagement.title"),
       icon: "battery",
       content: [
-        "Bạn có thể mua lượt đổi lẻ hoặc đăng ký gói đổi pin",
-        "Lượt đổi lẻ không có thời hạn, sử dụng bất cứ lúc nào",
-        "Gói đổi pin có thời hạn và số lượt giới hạn",
-        "Kiểm tra số lượt còn lại trong phần Quản lý lượt đổi",
+        t("guide.payment.single"),
+        t("guide.swapManagement.content1"),
+        t("guide.payment.package"),
+        t("guide.swapManagement.content2"),
       ],
     },
     {
-      title: "Thanh toán",
+      title: t("guide.payment.title"),
       icon: "credit-card",
       content: [
-        "Hỗ trợ nhiều phương thức thanh toán: Ví điện tử, Thẻ ngân hàng",
-        "Thanh toán nhanh chóng và an toàn",
-        "Xem lịch sử thanh toán trong phần Lịch sử",
-        "Hóa đơn điện tử sẽ được gửi qua email",
+        t("guide.payment.methods"),
+        t("guide.payment.secure"),
+        t("guide.payment.history"),
+        t("guide.payment.invoice"),
       ],
     },
     {
-      title: "Lưu ý quan trọng",
+      title: t("guide.safety.title"),
       icon: "alert-circle",
       content: [
-        "Luôn kiểm tra pin trước khi rời khỏi trạm",
-        "Báo cáo sự cố ngay nếu phát hiện pin có vấn đề",
-        "Tuân thủ hướng dẫn an toàn tại trạm",
-        "Liên hệ hỗ trợ nếu cần trợ giúp",
+        t("guide.safety.content1"),
+        t("guide.safety.content2"),
+        t("guide.safety.content3"),
+        t("guide.safety.content4"),
       ],
     },
   ];
@@ -98,9 +92,7 @@ export default function GuideScreen({}: Props) {
           <Text style={styles.headerTitle}>
             {t("profile.guide", { defaultValue: "Hướng dẫn sử dụng" })}
           </Text>
-          <Text style={styles.headerSubtitle}>
-            Hướng dẫn chi tiết về cách sử dụng ứng dụng đổi pin
-          </Text>
+          <Text style={styles.headerSubtitle}>{t("guide.description")}</Text>
         </View>
 
         {guideSections.map((section, index) => (
@@ -125,9 +117,7 @@ export default function GuideScreen({}: Props) {
         ))}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Cần hỗ trợ thêm? Liên hệ với chúng tôi qua phần Yêu cầu hỗ trợ
-          </Text>
+          <Text style={styles.footerText}>{t("terms.footer")}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -227,4 +217,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-

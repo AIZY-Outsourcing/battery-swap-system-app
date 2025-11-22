@@ -13,11 +13,13 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppStackParamList } from "../../../navigation/types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import * as VehicleService from "../../../services/api/VehicleService";
 
 type Props = NativeStackScreenProps<AppStackParamList, "AddVehicle">;
 
 export default function AddVehicleScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [vin, setVin] = useState("");
   const [plateNumber, setPlateNumber] = useState("");

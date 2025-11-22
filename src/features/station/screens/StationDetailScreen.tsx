@@ -8,11 +8,13 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { getStationById } from "../../../services/api/StationService";
 import { track } from "../../../services/analytics";
 
 export default function StationDetailScreen({ route, navigation }: any) {
+  const { t } = useTranslation();
   const { stationId } = route.params as { stationId: string | number };
   const [station, setStation] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
           setError(null);
         }
       } catch (e: any) {
-        if (mounted) setError(e?.message || "Không thể tải thông tin trạm");
+        if (mounted) setError(e?.message || t("station.error.loadFailed"));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -38,7 +40,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
     return () => {
       mounted = false;
     };
-  }, [stationId]);
+  }, [stationId, t]);
 
   const handleDirections = () => {
     if (!station) return;
@@ -60,8 +62,8 @@ export default function StationDetailScreen({ route, navigation }: any) {
           <View style={styles.statusBadge}>
             <Text style={styles.statusText}>
               {station?.available && station.available > 0
-                ? "Hoạt động"
-                : "Hết pin"}
+                ? t("station.status.active")
+                : t("station.status.inactive")}
             </Text>
           </View>
         </View>
@@ -70,7 +72,9 @@ export default function StationDetailScreen({ route, navigation }: any) {
           <Text
             style={[styles.stationName, { color: theme.colors.text.primary }]}
           >
-            {loading ? "Đang tải..." : station?.name || "Không có tên"}
+            {loading
+              ? t("station.loading")
+              : station?.name || t("station.noName")}
           </Text>
           {!!station?.address && (
             <Text
@@ -107,7 +111,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                     { color: theme.colors.text.secondary },
                   ]}
                 >
-                  Pin sẵn sàng
+                  {t("station.battery.available")}
                 </Text>
               </View>
               <View style={styles.batteryStatus}>
@@ -125,7 +129,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                     { color: theme.colors.text.secondary },
                   ]}
                 >
-                  Tổng pin
+                  {t("station.battery.total")}
                 </Text>
               </View>
               {station?.charging !== undefined && (
@@ -144,7 +148,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                       { color: theme.colors.text.secondary },
                     ]}
                   >
-                    Đang sạc
+                    {t("station.battery.charging")}
                   </Text>
                 </View>
               )}
@@ -164,7 +168,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                       { color: theme.colors.text.secondary },
                     ]}
                   >
-                    Đã đặt
+                    {t("station.battery.reserved")}
                   </Text>
                 </View>
               )}
@@ -184,7 +188,9 @@ export default function StationDetailScreen({ route, navigation }: any) {
                 track({ name: "station_reserve_open", stationId });
               }}
             >
-              <Text style={styles.primaryButtonText}>Đặt pin</Text>
+              <Text style={styles.primaryButtonText}>
+                {t("station.action.reserve")}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -200,7 +206,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                   { color: theme.colors.primary },
                 ]}
               >
-                Chỉ đường
+                {t("station.action.directions")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -220,7 +226,7 @@ export default function StationDetailScreen({ route, navigation }: any) {
                   { color: theme.colors.primary },
                 ]}
               >
-                Quét QR
+                {t("station.action.scanQR")}
               </Text>
             </TouchableOpacity>
           </View>

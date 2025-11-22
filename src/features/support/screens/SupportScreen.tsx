@@ -10,12 +10,14 @@ import {
   Image,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import SupportService, {
   SupportTicket,
 } from "../../../services/api/SupportService";
 // import { launchImageLibrary } from 'react-native-image-picker';
 
 const SupportScreen = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"create" | "tickets">("create");
   const [issueType, setIssueType] = useState("");
   const [description, setDescription] = useState("");
@@ -37,29 +39,32 @@ const SupportScreen = () => {
       setTickets(response.data);
     } catch (error) {
       console.error("Error loading tickets:", error);
-      Alert.alert("Lỗi", "Không thể tải danh sách yêu cầu hỗ trợ");
+      Alert.alert(t("support.error"), t("support.errorLoad"));
     } finally {
       setLoading(false);
     }
   };
 
   const issueTypes = [
-    { value: "battery_error", label: "Pin lỗi" },
-    { value: "kiosk_broken", label: "Kiosk hỏng" },
-    { value: "payment_issue", label: "Sự cố thanh toán" },
-    { value: "app_bug", label: "Lỗi ứng dụng" },
-    { value: "reservation_issue", label: "Vấn đề đặt chỗ" },
-    { value: "other", label: "Khác" },
+    { value: "battery_error", label: t("support.issueType.batteryError") },
+    { value: "kiosk_broken", label: t("support.issueType.kioskBroken") },
+    { value: "payment_issue", label: t("support.issueType.paymentIssue") },
+    { value: "app_bug", label: t("support.issueType.appBug") },
+    {
+      value: "reservation_issue",
+      label: t("support.issueType.reservationIssue"),
+    },
+    { value: "other", label: t("support.issueType.other") },
   ];
 
   const handleImagePick = () => {
     // Placeholder for image picker - would need react-native-image-picker
-    Alert.alert("Chức năng", "Tính năng chọn ảnh sẽ được thêm sau");
+    Alert.alert(t("support.imagePickerTitle"), t("support.imagePickerMessage"));
   };
 
   const handleSubmitTicket = async () => {
     if (!issueType || !description.trim()) {
-      Alert.alert("Lỗi", "Vui lòng chọn loại sự cố và nhập mô tả");
+      Alert.alert(t("support.error"), t("support.errorDescription"));
       return;
     }
 
@@ -69,7 +74,7 @@ const SupportScreen = () => {
       // Generate title from issue type
       const issueTypeLabel =
         issueTypes.find((t) => t.value === issueType)?.label ||
-        "Yêu cầu hỗ trợ";
+        t("support.submit");
 
       await SupportService.createTicket({
         title: issueTypeLabel,
@@ -78,27 +83,23 @@ const SupportScreen = () => {
         description: description,
       });
 
-      Alert.alert(
-        "Thành công",
-        "Yêu cầu hỗ trợ đã được gửi. Chúng tôi sẽ phản hồi trong vòng 24h.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setIssueType("");
-              setDescription("");
-              setAttachedImages([]);
-              setActiveTab("tickets");
-              loadTickets();
-            },
+      Alert.alert(t("support.successTitle"), t("support.successMessage"), [
+        {
+          text: "OK",
+          onPress: () => {
+            setIssueType("");
+            setDescription("");
+            setAttachedImages([]);
+            setActiveTab("tickets");
+            loadTickets();
           },
-        ]
-      );
+        },
+      ]);
     } catch (error: any) {
       console.error("Error submitting ticket:", error);
       Alert.alert(
-        "Lỗi",
-        error?.response?.data?.message || "Không thể gửi yêu cầu hỗ trợ"
+        t("support.error"),
+        error?.response?.data?.message || t("support.errorSubmit")
       );
     } finally {
       setSubmitting(false);
@@ -123,13 +124,13 @@ const SupportScreen = () => {
   const getStatusLabel = (status: SupportTicket["status"]) => {
     switch (status) {
       case "open":
-        return "Mở";
+        return t("support.status.open");
       case "in_progress":
-        return "Đang xử lý";
+        return t("support.status.inProgress");
       case "resolved":
-        return "Đã giải quyết";
+        return t("support.status.resolved");
       case "closed":
-        return "Đã đóng";
+        return t("support.status.closed");
       default:
         return status;
     }
@@ -149,7 +150,7 @@ const SupportScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Hỗ trợ</Text>
+        <Text style={styles.headerTitle}>{t("support.title")}</Text>
       </View>
 
       {/* Tab Selector */}
@@ -164,7 +165,7 @@ const SupportScreen = () => {
               activeTab === "create" && styles.activeTabText,
             ]}
           >
-            Gửi yêu cầu
+            {t("support.createTab")}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -177,7 +178,7 @@ const SupportScreen = () => {
               activeTab === "tickets" && styles.activeTabText,
             ]}
           >
-            Tickets của tôi
+            {t("support.ticketsTab")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -187,7 +188,7 @@ const SupportScreen = () => {
           /* Create Ticket Form */
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Loại sự cố *</Text>
+              <Text style={styles.label}>{t("support.issueTypeLabel")}</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -217,12 +218,12 @@ const SupportScreen = () => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Mô tả chi tiết *</Text>
+              <Text style={styles.label}>{t("support.descriptionLabel")}</Text>
               <TextInput
                 style={styles.textArea}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Vui lòng mô tả chi tiết sự cố bạn gặp phải..."
+                placeholder={t("support.descriptionPlaceholder")}
                 multiline
                 numberOfLines={5}
                 textAlignVertical="top"

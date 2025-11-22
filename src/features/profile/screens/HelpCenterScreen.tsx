@@ -20,60 +20,60 @@ export default function HelpCenterScreen({ navigation }: Props) {
 
   const contactMethods = [
     {
-      title: "Yêu cầu hỗ trợ trong ứng dụng",
+      title: t("helpCenter.inAppSupport"),
       icon: "message-question-outline",
-      description: "Gửi yêu cầu hỗ trợ trực tiếp từ ứng dụng",
+      description: t("helpCenter.inAppSupportDesc"),
       action: () => navigation.navigate("SupportRequest"),
-      actionText: "Gửi yêu cầu",
+      actionText: t("helpCenter.sendRequest"),
     },
     {
-      title: "Hotline hỗ trợ",
+      title: t("helpCenter.hotline"),
       icon: "phone",
-      description: "Gọi điện trực tiếp để được hỗ trợ nhanh chóng",
+      description: t("helpCenter.hotlineDesc"),
       phone: "1900 1234",
       action: () => Linking.openURL("tel:19001234"),
-      actionText: "Gọi ngay",
+      actionText: t("helpCenter.callNow"),
     },
     {
-      title: "Email hỗ trợ",
+      title: t("helpCenter.email"),
       icon: "email-outline",
-      description: "Gửi email cho chúng tôi, chúng tôi sẽ phản hồi trong vòng 24h",
+      description: t("helpCenter.emailDesc"),
       email: "support@batterystation.vn",
       action: () => Linking.openURL("mailto:support@batterystation.vn"),
-      actionText: "Gửi email",
+      actionText: t("helpCenter.sendEmail"),
     },
     {
-      title: "Trang web",
+      title: t("helpCenter.website"),
       icon: "web",
-      description: "Truy cập trang web để xem thêm thông tin",
+      description: t("helpCenter.websiteDesc"),
       url: "https://batterystation.vn",
       action: () => Linking.openURL("https://batterystation.vn"),
-      actionText: "Truy cập",
+      actionText: t("helpCenter.visit"),
     },
   ];
 
   const quickLinks = [
     {
-      title: "Hướng dẫn sử dụng",
+      title: t("profile.guide"),
       icon: "book-open-page-variant",
       onPress: () => navigation.navigate("Guide"),
     },
     {
-      title: "Câu hỏi thường gặp",
+      title: t("profile.faq"),
       icon: "help-circle-outline",
       onPress: () => navigation.navigate("FAQ"),
     },
     {
-      title: "Điều khoản sử dụng",
+      title: t("profile.terms"),
       icon: "file-document-outline",
       onPress: () => navigation.navigate("Terms"),
     },
   ];
 
   const workingHours = {
-    weekdays: "Thứ 2 - Thứ 6: 8:00 - 18:00",
-    weekend: "Thứ 7 - Chủ nhật: 9:00 - 17:00",
-    note: "Hỗ trợ 24/7 qua ứng dụng",
+    weekdays: t("helpCenter.weekdays"),
+    weekend: t("helpCenter.weekend"),
+    note: t("helpCenter.support247"),
   };
 
   return (
@@ -84,22 +84,20 @@ export default function HelpCenterScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.header}>
-          <MaterialCommunityIcons
-            name="headset"
-            size={48}
-            color="#5D7B6F"
-          />
+          <MaterialCommunityIcons name="headset" size={48} color="#5D7B6F" />
           <Text style={styles.headerTitle}>
             {t("profile.helpCenter", { defaultValue: "Trung tâm trợ giúp" })}
           </Text>
           <Text style={styles.headerSubtitle}>
-            Chúng tôi luôn sẵn sàng hỗ trợ bạn
+            {t("helpCenter.noAnswer", {
+              defaultValue: "Chúng tôi luôn sẵn sàng hỗ trợ bạn",
+            })}
           </Text>
         </View>
 
         {/* Quick Links */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Liên kết nhanh</Text>
+          <Text style={styles.sectionTitle}>{t("helpCenter.quickLinks")}</Text>
           <View style={styles.quickLinksContainer}>
             {quickLinks.map((link, index) => (
               <TouchableOpacity
@@ -126,7 +124,9 @@ export default function HelpCenterScreen({ navigation }: Props) {
 
         {/* Contact Methods */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cách liên hệ</Text>
+          <Text style={styles.sectionTitle}>
+            {t("helpCenter.contact", { defaultValue: "Cách liên hệ" })}
+          </Text>
           {contactMethods.map((method, index) => (
             <View key={index} style={styles.contactCard}>
               <View style={styles.contactHeader}>
@@ -137,7 +137,9 @@ export default function HelpCenterScreen({ navigation }: Props) {
                 />
                 <Text style={styles.contactTitle}>{method.title}</Text>
               </View>
-              <Text style={styles.contactDescription}>{method.description}</Text>
+              <Text style={styles.contactDescription}>
+                {method.description}
+              </Text>
               {method.phone && (
                 <Text style={styles.contactInfo}>{method.phone}</Text>
               )}
@@ -152,7 +154,9 @@ export default function HelpCenterScreen({ navigation }: Props) {
                 onPress={method.action}
                 activeOpacity={0.7}
               >
-                <Text style={styles.contactButtonText}>{method.actionText}</Text>
+                <Text style={styles.contactButtonText}>
+                  {method.actionText}
+                </Text>
                 <MaterialCommunityIcons
                   name="arrow-right"
                   size={18}
@@ -171,13 +175,11 @@ export default function HelpCenterScreen({ navigation }: Props) {
               size={32}
               color="#5D7B6F"
             />
-            <Text style={styles.workingHoursTitle}>Giờ làm việc</Text>
-            <Text style={styles.workingHoursText}>
-              {workingHours.weekdays}
+            <Text style={styles.workingHoursTitle}>
+              {t("helpCenter.workingHours")}
             </Text>
-            <Text style={styles.workingHoursText}>
-              {workingHours.weekend}
-            </Text>
+            <Text style={styles.workingHoursText}>{workingHours.weekdays}</Text>
+            <Text style={styles.workingHoursText}>{workingHours.weekend}</Text>
             <View style={styles.workingHoursNote}>
               <MaterialCommunityIcons
                 name="information"
@@ -370,4 +372,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-

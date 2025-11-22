@@ -8,6 +8,7 @@ import {
   Animated,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from "../../../theme";
@@ -44,37 +45,49 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [progressAnimation] = useState(new Animated.Value(0));
   const [isSwapping, setIsSwapping] = useState(false);
 
   // Debug log to check station data
   console.log("SwapSessionScreen - sessionData:", route.params?.sessionData);
-  console.log("SwapSessionScreen - station:", route.params?.sessionData?.station);
+  console.log(
+    "SwapSessionScreen - station:",
+    route.params?.sessionData?.station
+  );
 
   const swapSteps = [
     {
       id: 0,
-      title: "Chuẩn bị đổi pin",
-      subtitle: "Đang kiểm tra trạm và pin cũ",
+      title: t("swap.preparing"),
+      subtitle: t("swap.checkingStation", {
+        defaultValue: "Đang kiểm tra trạm và pin cũ",
+      }),
       icon: "search",
     },
     {
       id: 1,
-      title: "Tháo pin cũ",
-      subtitle: "Vui lòng tháo pin cũ ra khỏi xe",
+      title: t("swap.removeOld", { defaultValue: "Tháo pin cũ" }),
+      subtitle: t("swap.removeOldDesc", {
+        defaultValue: "Vui lòng tháo pin cũ ra khỏi xe",
+      }),
       icon: "battery-outline",
     },
     {
       id: 2,
-      title: "Đặt pin cũ vào khoang",
-      subtitle: "Đặt pin cũ vào khoang trống",
+      title: t("swap.placeOld", { defaultValue: "Đặt pin cũ vào khoang" }),
+      subtitle: t("swap.placeOldDesc", {
+        defaultValue: "Đặt pin cũ vào khoang trống",
+      }),
       icon: "arrow-down",
     },
     {
       id: 3,
-      title: "Lấy pin mới",
-      subtitle: "Pin mới đã sẵn sàng, vui lòng lấy ra",
+      title: t("swap.takeNew", { defaultValue: "Lấy pin mới" }),
+      subtitle: t("swap.takeNewDesc", {
+        defaultValue: "Pin mới đã sẵn sàng, vui lòng lấy ra",
+      }),
       icon: "battery",
     },
     {
@@ -120,10 +133,10 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
   };
 
   const handleCancelSwap = () => {
-    Alert.alert("Hủy đổi pin", "Bạn có chắc muốn hủy quá trình đổi pin?", [
-      { text: "Tiếp tục", style: "cancel" },
+    Alert.alert(t("swap.cancelTitle"), t("swap.cancelMessage"), [
+      { text: t("swap.continue"), style: "cancel" },
       {
-        text: "Hủy",
+        text: t("reservation.cancel"),
         style: "destructive",
         onPress: () => navigation.goBack(),
       },
@@ -132,17 +145,24 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
 
   const handleEndSession = async () => {
     if (!route.params?.sessionData?.id) {
-      Alert.alert("Lỗi", "Không tìm thấy thông tin phiên làm việc");
+      Alert.alert(
+        t("support.error"),
+        t("swap.sessionNotFound", {
+          defaultValue: "Không tìm thấy thông tin phiên làm việc",
+        })
+      );
       return;
     }
 
     Alert.alert(
-      "Kết thúc phiên",
-      "Bạn có chắc muốn kết thúc phiên làm việc tại trạm này?",
+      t("swap.endSession", { defaultValue: "Kết thúc phiên" }),
+      t("swap.endSessionConfirm", {
+        defaultValue: "Bạn có chắc muốn kết thúc phiên làm việc tại trạm này?",
+      }),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("reservation.cancelNo"), style: "cancel" },
         {
-          text: "Kết thúc",
+          text: t("swap.endSessionBtn", { defaultValue: "Kết thúc" }),
           style: "destructive",
           onPress: async () => {
             try {
@@ -150,16 +170,22 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
                 route.params.sessionData!.id,
                 route.params.sessionData!.session_token
               );
-              
-              console.log("End session response:", JSON.stringify(result, null, 2));
-              
+
+              console.log(
+                "End session response:",
+                JSON.stringify(result, null, 2)
+              );
+
               // Check if end session was successful
-              const isSuccess = (result.data as any)?.success === true || result.success;
-              
+              const isSuccess =
+                (result.data as any)?.success === true || result.success;
+
               if (isSuccess) {
                 Alert.alert(
-                  "Thành công",
-                  "Đã kết thúc phiên làm việc",
+                  t("support.successTitle"),
+                  t("swap.sessionEnded", {
+                    defaultValue: "Đã kết thúc phiên làm việc",
+                  }),
                   [
                     {
                       text: "OK",
@@ -169,11 +195,24 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
                 );
               } else {
                 // Check if session was already ended (e.g., at kiosk)
-                const errorMessage = result.error?.message || "Không thể kết thúc phiên";
-                if (errorMessage.includes("already ended") || errorMessage.includes("not found") || errorMessage.includes("inactive")) {
+                const errorMessage =
+                  result.error?.message ||
+                  t("swap.cannotEndSession", {
+                    defaultValue: "Không thể kết thúc phiên",
+                  });
+                if (
+                  errorMessage.includes("already ended") ||
+                  errorMessage.includes("not found") ||
+                  errorMessage.includes("inactive")
+                ) {
                   Alert.alert(
-                    "Phiên đã kết thúc",
-                    "Phiên làm việc đã được kết thúc tại kiosk. Bạn sẽ được chuyển về trang chủ.",
+                    t("swap.sessionAlreadyEnded", {
+                      defaultValue: "Phiên đã kết thúc",
+                    }),
+                    t("swap.sessionEndedAtKiosk", {
+                      defaultValue:
+                        "Phiên làm việc đã được kết thúc tại kiosk. Bạn sẽ được chuyển về trang chủ.",
+                    }),
                     [
                       {
                         text: "OK",
@@ -182,11 +221,15 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
                     ]
                   );
                 } else {
-                  Alert.alert("Lỗi", errorMessage);
+                  Alert.alert(t("support.error"), errorMessage);
                 }
               }
             } catch (error: any) {
-              Alert.alert("Lỗi", error.message || "Có lỗi xảy ra");
+              Alert.alert(
+                t("support.error"),
+                error.message ||
+                  t("swap.errorOccurred", { defaultValue: "Có lỗi xảy ra" })
+              );
             }
           },
         },
@@ -218,7 +261,8 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
         </View>
         <Text style={styles.successTitle}>Đăng nhập thành công!</Text>
         <Text style={styles.successSubtitle}>
-          Đang đổi pin tại trạm {route.params?.sessionData?.station?.name || "Station fallback name"}
+          Đang đổi pin tại trạm{" "}
+          {route.params?.sessionData?.station?.name || "Station fallback name"}
         </Text>
       </View>
 
@@ -229,7 +273,8 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
           {route.params?.sessionData?.station?.name || "Station fallback name"}
         </Text>
         <Text style={styles.stationAddress}>
-          {route.params?.sessionData?.station?.address || "Station fallback address"}
+          {route.params?.sessionData?.station?.address ||
+            "Station fallback address"}
         </Text>
         <Text style={styles.stationCity}>
           {route.params?.sessionData?.station?.city || "Station fallback city"}
@@ -271,7 +316,7 @@ export const SwapSessionScreen: React.FC<SwapSessionScreenProps> = ({
           </View>
         ))}
       </View>
-      
+
       {/* End Session Button - Fixed at bottom */}
       {route.params?.sessionData && (
         <View style={styles.endSessionContainer}>

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import SupportService, {
   SupportTicket,
 } from "../../../services/api/SupportService";
@@ -20,6 +21,7 @@ type StatusFilter = "all" | "open" | "in_progress" | "resolved" | "closed";
 
 const SupportRequestScreen = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,7 +53,7 @@ const SupportRequestScreen = () => {
     } catch (error) {
       console.error("Error loading tickets:", error);
       setTickets([]); // Set empty array on error
-      Alert.alert("Lỗi", "Không thể tải danh sách yêu cầu");
+      Alert.alert(t("common.error"), t("support.loadError"));
     } finally {
       setLoading(false);
     }
@@ -90,13 +92,13 @@ const SupportRequestScreen = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "open":
-        return "Mới";
+        return t("support.statusNew");
       case "in_progress":
-        return "Đang xử lý";
+        return t("support.statusInProgress");
       case "resolved":
-        return "Đã giải quyết";
+        return t("support.statusResolved");
       case "closed":
-        return "Đã đóng";
+        return t("support.statusClosed");
       default:
         return status;
     }
@@ -115,13 +117,13 @@ const SupportRequestScreen = () => {
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) {
-      return "Vừa xong";
+      return t("support.justNow");
     } else if (diffMins < 60) {
-      return `${diffMins} phút trước`;
+      return `${diffMins} ${t("support.minutesAgo")}`;
     } else if (diffHours < 24) {
-      return `${diffHours} giờ trước`;
+      return `${diffHours} ${t("support.hoursAgo")}`;
     } else if (diffDays < 7) {
-      return `${diffDays} ngày trước`;
+      return `${diffDays} ${t("support.daysAgo")}`;
     } else {
       return adjustedDate.toLocaleDateString("vi-VN", {
         day: "2-digit",
@@ -214,7 +216,7 @@ const SupportRequestScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <Text style={styles.loadingText}>{t("vehicle.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -230,7 +232,7 @@ const SupportRequestScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yêu cầu hỗ trợ</Text>
+        <Text style={styles.headerTitle}>{t("support.myRequests")}</Text>
         <TouchableOpacity onPress={handleCreateTicket} style={styles.addButton}>
           <Ionicons name="add-circle" size={28} color="#34C759" />
         </TouchableOpacity>
@@ -256,7 +258,8 @@ const SupportRequestScreen = () => {
               statusFilter === "all" && styles.filterTabTextActive,
             ]}
           >
-            Tất cả ({Array.isArray(tickets) ? tickets.length : 0})
+            {t("support.filterAll")} (
+            {Array.isArray(tickets) ? tickets.length : 0})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -272,7 +275,7 @@ const SupportRequestScreen = () => {
               statusFilter === "open" && styles.filterTabTextActive,
             ]}
           >
-            Mới (
+            {t("support.filterOpen")} (
             {Array.isArray(tickets)
               ? tickets.filter((t) => t.status === "open").length
               : 0}
@@ -292,7 +295,7 @@ const SupportRequestScreen = () => {
               statusFilter === "in_progress" && styles.filterTabTextActive,
             ]}
           >
-            Đang xử lý (
+            {t("support.filterInProgress")} (
             {Array.isArray(tickets)
               ? tickets.filter((t) => t.status === "in_progress").length
               : 0}
@@ -312,7 +315,7 @@ const SupportRequestScreen = () => {
               statusFilter === "resolved" && styles.filterTabTextActive,
             ]}
           >
-            Đã giải quyết (
+            {t("support.filterResolved")} (
             {Array.isArray(tickets)
               ? tickets.filter((t) => t.status === "resolved").length
               : 0}
@@ -332,7 +335,7 @@ const SupportRequestScreen = () => {
               statusFilter === "closed" && styles.filterTabTextActive,
             ]}
           >
-            Đã đóng (
+            {t("support.filterClosed")} (
             {Array.isArray(tickets)
               ? tickets.filter((t) => t.status === "closed").length
               : 0}
@@ -354,15 +357,13 @@ const SupportRequestScreen = () => {
             <Ionicons name="document-text-outline" size={64} color="#C7C7CC" />
             <Text style={styles.emptyStateTitle}>
               {statusFilter === "all"
-                ? "Chưa có yêu cầu hỗ trợ"
-                : "Không có yêu cầu nào"}
+                ? t("support.noRequests")
+                : t("support.noRequests")}
             </Text>
             <Text style={styles.emptyStateText}>
               {statusFilter === "all"
-                ? "Tạo yêu cầu hỗ trợ mới bằng cách nhấn vào nút + ở góc trên"
-                : `Không có yêu cầu với trạng thái "${getStatusLabel(
-                    statusFilter
-                  )}"`}
+                ? t("support.noRequestsDesc")
+                : `${t("support.noRequests")} ${getStatusLabel(statusFilter)}`}
             </Text>
           </View>
         ) : (

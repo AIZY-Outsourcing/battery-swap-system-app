@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppStackParamList } from "../../../navigation/types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import * as VehicleService from "../../../services/api/VehicleService";
 
 type Props = NativeStackScreenProps<AppStackParamList, "MyVehicles">;
@@ -30,6 +31,7 @@ interface Vehicle {
 }
 
 export default function MyVehiclesScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,13 +44,13 @@ export default function MyVehiclesScreen({ navigation }: Props) {
         setVehicles(response.data);
       } else {
         Alert.alert(
-          "Lỗi",
-          response.error?.message || "Không thể tải danh sách xe"
+          t("common.error"),
+          response.error?.message || t("vehicle.error.loadFailed")
         );
       }
     } catch (error) {
       console.error("Error fetching vehicles:", error);
-      Alert.alert("Lỗi", "Không thể tải danh sách xe");
+      Alert.alert(t("common.error"), t("vehicle.error.loadFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -66,28 +68,28 @@ export default function MyVehiclesScreen({ navigation }: Props) {
 
   const handleDeleteVehicle = (vehicleId: string, vehicleName: string) => {
     Alert.alert(
-      "Xác nhận xóa",
-      `Bạn có chắc chắn muốn xóa xe "${vehicleName}"?`,
+      t("vehicle.delete.confirmTitle"),
+      t("vehicle.delete.confirmMessage", { name: vehicleName }),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("vehicle.delete.cancel"), style: "cancel" },
         {
-          text: "Xóa",
+          text: t("vehicle.delete.confirm"),
           style: "destructive",
           onPress: async () => {
             try {
               const response = await VehicleService.deleteVehicle(vehicleId);
               if (response.success) {
-                Alert.alert("Thành công", "Đã xóa xe thành công");
+                Alert.alert(t("common.success"), t("vehicle.delete.success"));
                 fetchVehicles();
               } else {
                 Alert.alert(
-                  "Lỗi",
-                  response.error?.message || "Không thể xóa xe"
+                  t("common.error"),
+                  response.error?.message || t("vehicle.error.deleteFailed")
                 );
               }
             } catch (error) {
               console.error("Error deleting vehicle:", error);
-              Alert.alert("Lỗi", "Không thể xóa xe");
+              Alert.alert(t("common.error"), t("vehicle.error.deleteFailed"));
             }
           },
         },
@@ -134,7 +136,9 @@ export default function MyVehiclesScreen({ navigation }: Props) {
         {item.manufacturer_year && (
           <View style={styles.detailItem}>
             <MaterialCommunityIcons name="calendar" size={16} color="#64748b" />
-            <Text style={styles.detailText}>Năm: {item.manufacturer_year}</Text>
+            <Text style={styles.detailText}>
+              {t("vehicle.year")}: {item.manufacturer_year}
+            </Text>
           </View>
         )}
       </View>
@@ -144,10 +148,8 @@ export default function MyVehiclesScreen({ navigation }: Props) {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <MaterialCommunityIcons name="car-off" size={64} color="#cbd5e1" />
-      <Text style={styles.emptyTitle}>Chưa có xe nào</Text>
-      <Text style={styles.emptySubtitle}>
-        Thêm xe đầu tiên của bạn để bắt đầu sử dụng dịch vụ
-      </Text>
+      <Text style={styles.emptyTitle}>{t("vehicle.empty.title")}</Text>
+      <Text style={styles.emptySubtitle}>{t("vehicle.empty.subtitle")}</Text>
     </View>
   );
 
@@ -156,7 +158,7 @@ export default function MyVehiclesScreen({ navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#5D7B6F" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <Text style={styles.loadingText}>{t("vehicle.loading")}</Text>
         </View>
       </SafeAreaView>
     );

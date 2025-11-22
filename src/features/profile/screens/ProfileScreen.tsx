@@ -211,7 +211,7 @@ export default function ProfileScreen({ navigation }: Props) {
       {
         key: "vehicles",
         icon: "car-multiple",
-        label: "Quản lý xe",
+        label: t("vehicle.management"),
         onPress: () => navigation.navigate("MyVehicles"),
       },
       {
@@ -252,10 +252,7 @@ export default function ProfileScreen({ navigation }: Props) {
     ],
     [t, navigation]
   );
-  const legalMenu: MenuItemDef[] = useMemo(
-    () => [],
-    [t]
-  );
+  const legalMenu: MenuItemDef[] = useMemo(() => [], [t]);
 
   const faceIdMenu: MenuItemDef[] = useMemo(
     () => [

@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 
 interface PaymentMethod {
@@ -28,6 +29,7 @@ interface PaymentMethodsScreenProps {
 export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
   navigation,
 }) => {
+  const { t } = useTranslation();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     {
       id: "1",
@@ -79,12 +81,12 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
 
   const handleDeleteMethod = (methodId: string) => {
     Alert.alert(
-      "Xóa phương thức thanh toán",
-      "Bạn có chắc muốn xóa phương thức thanh toán này?",
+      t("payment.methods.delete.title"),
+      t("payment.methods.delete.message"),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("reservation.cancelNo"), style: "cancel" },
         {
-          text: "Xóa",
+          text: t("settings.deleteAccount.confirm"),
           style: "destructive",
           onPress: () => {
             setPaymentMethods((methods) =>

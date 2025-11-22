@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
 import { useAuthStore } from "../../../store/authStore";
+import { useTranslation } from "react-i18next";
 
 export default function SettingsScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const logout = useAuthStore((state) => state.logout);
   const [settings, setSettings] = useState({
     notifications: true,
@@ -30,10 +32,10 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleLogout = () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert(t("settings.logout.title"), t("settings.logout.message"), [
+      { text: t("settings.logout.cancel"), style: "cancel" },
       {
-        text: "Đăng xuất",
+        text: t("settings.logout.confirm"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -44,7 +46,7 @@ export default function SettingsScreen({ navigation }: any) {
               routes: [{ name: "AuthStack" }],
             });
           } catch (error) {
-            Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại.");
+            Alert.alert(t("support.error"), t("settings.logout.error"));
           }
         },
       },
@@ -53,12 +55,12 @@ export default function SettingsScreen({ navigation }: any) {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      "Xóa tài khoản",
-      "Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản? Hành động này không thể hoàn tác.",
+      t("settings.deleteAccount.title"),
+      t("settings.deleteAccount.message"),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("settings.logout.cancel"), style: "cancel" },
         {
-          text: "Xóa",
+          text: t("settings.deleteAccount.confirm"),
           style: "destructive",
           onPress: () => console.log("Delete account"),
         },

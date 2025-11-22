@@ -7,6 +7,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { theme } from "../../../theme";
+import { useTranslation } from "react-i18next";
 
 interface SwapSuccessScreenProps {
   navigation: any;
@@ -15,6 +16,8 @@ interface SwapSuccessScreenProps {
 export const SwapSuccessScreen: React.FC<SwapSuccessScreenProps> = ({
   navigation,
 }) => {
+  const { t } = useTranslation();
+
   const handleContinue = () => {
     // Navigate back to home or map
     navigation.navigate("Home");
@@ -41,17 +44,15 @@ export const SwapSuccessScreen: React.FC<SwapSuccessScreenProps> = ({
         <View style={styles.successIcon}>
           <Text style={styles.successEmoji}>✅</Text>
         </View>
-        <Text style={styles.successTitle}>Đổi pin thành công!</Text>
-        <Text style={styles.successSubtitle}>
-          Pin mới đã được lắp đặt và sẵn sàng sử dụng
-        </Text>
+        <Text style={styles.successTitle}>{t("swap.success.title")}</Text>
+        <Text style={styles.successSubtitle}>{t("swap.success.subtitle")}</Text>
       </View>
 
       {/* Battery Status */}
       <View style={styles.batteryContainer}>
         <View style={styles.batteryComparison}>
           <View style={styles.batteryStatus}>
-            <Text style={styles.batteryLabel}>Pin cũ</Text>
+            <Text style={styles.batteryLabel}>{t("swap.oldBattery")}</Text>
             <View style={styles.batteryBar}>
               <View
                 style={[
@@ -69,7 +70,7 @@ export const SwapSuccessScreen: React.FC<SwapSuccessScreenProps> = ({
           <Text style={styles.arrowIcon}>→</Text>
 
           <View style={styles.batteryStatus}>
-            <Text style={styles.batteryLabel}>Pin mới</Text>
+            <Text style={styles.batteryLabel}>{t("swap.newBattery")}</Text>
             <View style={styles.batteryBar}>
               <View
                 style={[
@@ -88,37 +89,37 @@ export const SwapSuccessScreen: React.FC<SwapSuccessScreenProps> = ({
 
       {/* Swap Details */}
       <View style={styles.detailsContainer}>
-        <Text style={styles.detailsTitle}>Chi tiết đổi pin</Text>
+        <Text style={styles.detailsTitle}>{t("swap.details.title")}</Text>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Trạm</Text>
+          <Text style={styles.detailLabel}>{t("swap.details.station")}</Text>
           <Text style={styles.detailValue}>{swapDetails.station}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Địa chỉ</Text>
+          <Text style={styles.detailLabel}>{t("swap.details.address")}</Text>
           <Text style={styles.detailValue}>{swapDetails.address}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Thời gian</Text>
+          <Text style={styles.detailLabel}>{t("swap.details.time")}</Text>
           <Text style={styles.detailValue}>{swapDetails.time}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Thời gian đổi</Text>
+          <Text style={styles.detailLabel}>{t("swap.details.duration")}</Text>
           <Text style={styles.detailValue}>{swapDetails.swapDuration}</Text>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Chi phí</Text>
+          <Text style={styles.detailLabel}>{t("swap.details.cost")}</Text>
           <Text style={styles.detailValue}>{swapDetails.cost}</Text>
         </View>
       </View>
 
       {/* Rating Section */}
       <View style={styles.ratingContainer}>
-        <Text style={styles.ratingTitle}>Đánh giá trải nghiệm</Text>
+        <Text style={styles.ratingTitle}>{t("swap.rating.title")}</Text>
         <View style={styles.starsContainer}>
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity key={star} style={styles.star}>
@@ -126,9 +127,7 @@ export const SwapSuccessScreen: React.FC<SwapSuccessScreenProps> = ({
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={styles.ratingSubtext}>
-          Hãy để lại đánh giá để giúp chúng tôi cải thiện dịch vụ
-        </Text>
+        <Text style={styles.ratingSubtext}>{t("swap.rating.subtitle")}</Text>
       </View>
 
       {/* Action Buttons */}
@@ -137,14 +136,14 @@ export const SwapSuccessScreen: React.FC<SwapSuccessScreenProps> = ({
           style={styles.historyButton}
           onPress={handleViewHistory}
         >
-          <Text style={styles.historyButtonText}>Xem lịch sử</Text>
+          <Text style={styles.historyButtonText}>{t("swap.viewHistory")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.continueButton}
           onPress={handleContinue}
         >
-          <Text style={styles.continueButtonText}>Tiếp tục</Text>
+          <Text style={styles.continueButtonText}>{t("swap.continue")}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

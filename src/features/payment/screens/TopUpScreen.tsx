@@ -9,6 +9,7 @@ import {
   FlatList,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 
 interface TopUpScreenProps {
@@ -16,6 +17,7 @@ interface TopUpScreenProps {
 }
 
 export const TopUpScreen: React.FC<TopUpScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("card1");
@@ -68,17 +70,27 @@ export const TopUpScreen: React.FC<TopUpScreenProps> = ({ navigation }) => {
   const handleTopUp = () => {
     const amount = getFinalAmount();
     if (amount < 10000) {
-      Alert.alert("Lỗi", "Số tiền nạp tối thiểu là 10.000 VND");
+      Alert.alert(
+        t("support.error"),
+        t("topUp.minAmount", {
+          defaultValue: "Số tiền nạp tối thiểu là 10.000 VND",
+        })
+      );
       return;
     }
 
     Alert.alert(
-      "Xác nhận nạp tiền",
-      `Bạn có chắc muốn nạp ${formatCurrency(amount)} vào ví BSS?`,
+      t("topUp.confirm", { defaultValue: "Xác nhận nạp tiền" }),
+      t("topUp.confirmMessage", {
+        defaultValue: `Bạn có chắc muốn nạp ${formatCurrency(
+          amount
+        )} vào ví BSS?`,
+        amount: formatCurrency(amount),
+      }),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("reservation.cancelNo"), style: "cancel" },
         {
-          text: "Xác nhận",
+          text: t("order.confirm"),
           onPress: () => {
             // Navigate to payment processing or success screen
             navigation.navigate("PaymentProcessing", {

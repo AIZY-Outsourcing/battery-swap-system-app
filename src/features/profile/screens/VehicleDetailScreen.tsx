@@ -12,6 +12,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppStackParamList } from "../../../navigation/types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import * as VehicleService from "../../../services/api/VehicleService";
 
 type Props = NativeStackScreenProps<AppStackParamList, "VehicleDetail">;
@@ -29,6 +30,7 @@ interface Vehicle {
 }
 
 export default function VehicleDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { vehicleId } = route.params;
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,14 +46,14 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
         setVehicle(response.data);
       } else {
         Alert.alert(
-          "Lỗi",
-          response.error?.message || "Không thể tải thông tin xe"
+          t("common.error"),
+          response.error?.message || t("vehicle.error.loadInfo")
         );
         navigation.goBack();
       }
     } catch (error) {
       console.error("Error fetching vehicle:", error);
-      Alert.alert("Lỗi", "Không thể tải thông tin xe");
+      Alert.alert(t("common.error"), t("vehicle.error.loadInfo"));
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -60,32 +62,32 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
 
   const handleDelete = () => {
     Alert.alert(
-      "Xác nhận xóa",
-      `Bạn có chắc chắn muốn xóa xe "${vehicle?.name}"?`,
+      t("vehicle.delete.confirmTitle"),
+      t("vehicle.delete.confirmMessage", { name: vehicle?.name }),
       [
-        { text: "Hủy", style: "cancel" },
+        { text: t("vehicle.delete.cancel"), style: "cancel" },
         {
-          text: "Xóa",
+          text: t("vehicle.delete.confirm"),
           style: "destructive",
           onPress: async () => {
             try {
               const response = await VehicleService.deleteVehicle(vehicleId);
               if (response.success) {
-                Alert.alert("Thành công", "Đã xóa xe thành công", [
+                Alert.alert(t("common.success"), t("vehicle.delete.success"), [
                   {
-                    text: "OK",
+                    text: t("common.ok"),
                     onPress: () => navigation.goBack(),
                   },
                 ]);
               } else {
                 Alert.alert(
-                  "Lỗi",
-                  response.error?.message || "Không thể xóa xe"
+                  t("common.error"),
+                  response.error?.message || t("vehicle.error.deleteFailed")
                 );
               }
             } catch (error) {
               console.error("Error deleting vehicle:", error);
-              Alert.alert("Lỗi", "Không thể xóa xe");
+              Alert.alert(t("common.error"), t("vehicle.error.deleteFailed"));
             }
           },
         },
@@ -110,7 +112,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#5D7B6F" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <Text style={styles.loadingText}>{t("vehicle.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -121,7 +123,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="car-off" size={64} color="#cbd5e1" />
-          <Text style={styles.emptyText}>Không tìm thấy thông tin xe</Text>
+          <Text style={styles.emptyText}>{t("vehicle.detail.notFound")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -145,7 +147,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
 
         {/* Details Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin chi tiết</Text>
+          <Text style={styles.sectionTitle}>{t("vehicle.detail.info")}</Text>
 
           <View style={styles.detailRow}>
             <View style={styles.detailIcon}>
@@ -171,7 +173,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
                 />
               </View>
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Năm sản xuất</Text>
+                <Text style={styles.detailLabel}>
+                  {t("vehicle.add.manufacturerYear")}
+                </Text>
                 <Text style={styles.detailValue}>
                   {vehicle.manufacturer_year}
                 </Text>
@@ -188,7 +192,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
               />
             </View>
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Biển số</Text>
+              <Text style={styles.detailLabel}>
+                {t("vehicle.add.plateNumber")}
+              </Text>
               <Text style={styles.detailValue}>{vehicle.plate_number}</Text>
             </View>
           </View>
@@ -196,7 +202,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
 
         {/* Metadata Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin hệ thống</Text>
+          <Text style={styles.sectionTitle}>
+            {t("vehicle.detail.systemInfo")}
+          </Text>
 
           <View style={styles.detailRow}>
             <View style={styles.detailIcon}>
@@ -207,7 +215,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
               />
             </View>
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Ngày tạo</Text>
+              <Text style={styles.detailLabel}>
+                {t("vehicle.detail.createdAt")}
+              </Text>
               <Text style={styles.detailValue}>
                 {formatDate(vehicle.created_at)}
               </Text>
@@ -224,7 +234,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
                 />
               </View>
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Cập nhật lần cuối</Text>
+                <Text style={styles.detailLabel}>
+                  {t("vehicle.detail.updatedAt")}
+                </Text>
                 <Text style={styles.detailValue}>
                   {formatDate(vehicle.updated_at)}
                 </Text>
@@ -242,12 +254,16 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
             }
           >
             <MaterialCommunityIcons name="pencil" size={20} color="#ffffff" />
-            <Text style={styles.editButtonText}>Chỉnh sửa</Text>
+            <Text style={styles.editButtonText}>
+              {t("vehicle.detail.edit")}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <MaterialCommunityIcons name="delete" size={20} color="#ffffff" />
-            <Text style={styles.deleteButtonText}>Xóa xe</Text>
+            <Text style={styles.deleteButtonText}>
+              {t("vehicle.detail.delete")}
+            </Text>
           </TouchableOpacity>
         </View>
 

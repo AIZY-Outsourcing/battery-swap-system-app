@@ -35,54 +35,44 @@ export default function FAQScreen({}: Props) {
 
   const faqItems: FAQItem[] = [
     {
-      question: "Làm thế nào để đổi pin?",
-      answer:
-        "Bạn có thể tìm trạm đổi pin gần nhất trên ứng dụng, quét mã QR tại kiosk, và làm theo hướng dẫn trên màn hình. Hệ thống sẽ tự động xử lý quá trình đổi pin cho bạn.",
+      question: t("faq.howToSwap.question"),
+      answer: t("faq.howToSwap.answer"),
     },
     {
-      question: "Tôi cần bao nhiêu lượt đổi để sử dụng dịch vụ?",
-      answer:
-        "Bạn có thể mua lượt đổi lẻ hoặc đăng ký gói đổi pin. Lượt đổi lẻ không có thời hạn, còn gói đổi pin có thời hạn và số lượt giới hạn tùy theo gói bạn chọn.",
+      question: t("faq.swapTypes.question"),
+      answer: t("faq.swapTypes.answer"),
     },
     {
-      question: "Pin được giữ trong bao lâu sau khi đặt trước?",
-      answer:
-        "Pin được giữ trong 15 phút sau thời gian dự kiến đến của bạn. Nếu bạn không đến trong thời gian này, đặt trước sẽ tự động bị hủy.",
+      question: t("faq.reservationExpiry.question"),
+      answer: t("faq.reservationExpiry.answer"),
     },
     {
-      question: "Tôi có thể hủy đặt trước không?",
-      answer:
-        "Có, bạn có thể hủy đặt trước bất cứ lúc nào từ phần Đặt trước của tôi. Hủy đặt trước sẽ không làm mất lượt đổi của bạn.",
+      question: t("faq.cancelReservation.question"),
+      answer: t("faq.cancelReservation.answer"),
     },
     {
-      question: "Làm gì nếu pin có vấn đề?",
-      answer:
-        "Nếu phát hiện pin có vấn đề, vui lòng báo cáo ngay qua phần Yêu cầu hỗ trợ trong ứng dụng. Chúng tôi sẽ xử lý và hỗ trợ bạn trong thời gian sớm nhất.",
+      question: t("faq.batteryIssue.question"),
+      answer: t("faq.batteryIssue.answer"),
     },
     {
-      question: "Tôi có thể thanh toán bằng cách nào?",
-      answer:
-        "Ứng dụng hỗ trợ nhiều phương thức thanh toán như ví điện tử (MoMo, ZaloPay) và thẻ ngân hàng. Tất cả giao dịch đều được bảo mật và mã hóa.",
+      question: t("faq.paymentMethods.question"),
+      answer: t("faq.paymentMethods.answer"),
     },
     {
-      question: "Lượt đổi có thời hạn không?",
-      answer:
-        "Lượt đổi lẻ không có thời hạn, bạn có thể sử dụng bất cứ lúc nào. Gói đổi pin có thời hạn cụ thể tùy theo gói bạn đăng ký, thường là 30 ngày hoặc theo thời hạn của gói.",
+      question: t("faq.swapExpiry.question"),
+      answer: t("faq.swapExpiry.answer"),
     },
     {
-      question: "Tôi có thể xem lịch sử đổi pin ở đâu?",
-      answer:
-        "Bạn có thể xem lịch sử đổi pin và thanh toán trong tab Lịch sử ở màn hình chính. Tại đây bạn có thể xem tất cả các giao dịch đã thực hiện.",
+      question: t("faq.viewHistory.question"),
+      answer: t("faq.viewHistory.answer"),
     },
     {
-      question: "Ứng dụng có hỗ trợ đa ngôn ngữ không?",
-      answer:
-        "Có, ứng dụng hỗ trợ tiếng Việt và tiếng Anh. Bạn có thể thay đổi ngôn ngữ trong phần Cài đặt của màn hình Profile.",
+      question: t("faq.language.question"),
+      answer: t("faq.language.answer"),
     },
     {
-      question: "Làm sao để liên hệ hỗ trợ?",
-      answer:
-        "Bạn có thể liên hệ hỗ trợ qua phần Yêu cầu hỗ trợ trong ứng dụng. Chúng tôi sẽ phản hồi trong thời gian sớm nhất có thể.",
+      question: t("faq.contact.question"),
+      answer: t("faq.contact.answer"),
     },
   ];
 
@@ -102,9 +92,7 @@ export default function FAQScreen({}: Props) {
           <Text style={styles.headerTitle}>
             {t("profile.faq", { defaultValue: "Câu hỏi thường gặp" })}
           </Text>
-          <Text style={styles.headerSubtitle}>
-            Tìm câu trả lời cho các câu hỏi phổ biến
-          </Text>
+          <Text style={styles.headerSubtitle}>{t("faq.description")}</Text>
         </View>
 
         {faqItems.map((item, index) => {
@@ -233,4 +221,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

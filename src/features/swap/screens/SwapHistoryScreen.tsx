@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import SwapTransactionService, {
   SwapTransaction,
@@ -22,6 +23,7 @@ interface SwapHistoryScreenProps {
 export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
   navigation,
 }) => {
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("all");
@@ -38,7 +40,7 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
       setSwapHistory(Array.isArray(transactions) ? transactions : []);
     } catch (error) {
       console.error("Error loading swap history:", error);
-      Alert.alert("Lỗi", "Không thể tải lịch sử đổi pin");
+      Alert.alert(t("support.error"), t("swap.historyError"));
       setSwapHistory([]);
     } finally {
       setLoading(false);
@@ -52,10 +54,16 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
   }, []);
 
   const periods = [
-    { id: "all", label: "Tất cả" },
-    { id: "week", label: "Tuần này" },
-    { id: "month", label: "Tháng này" },
-    { id: "quarter", label: "3 tháng" },
+    { id: "all", label: t("map.allStations") },
+    { id: "week", label: t("common.thisWeek", { defaultValue: "Tuần này" }) },
+    {
+      id: "month",
+      label: t("common.thisMonth", { defaultValue: "Tháng này" }),
+    },
+    {
+      id: "quarter",
+      label: t("common.threeMonths", { defaultValue: "3 tháng" }),
+    },
   ];
 
   const getStatusColor = (status: string) => {
@@ -171,7 +179,7 @@ export const SwapHistoryScreen: React.FC<SwapHistoryScreenProps> = ({
         >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lịch sử đổi pin</Text>
+        <Text style={styles.headerTitle}>{t("swap.historyTitle")}</Text>
         <View style={styles.placeholder} />
       </View>
 

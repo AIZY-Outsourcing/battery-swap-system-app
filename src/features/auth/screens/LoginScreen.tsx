@@ -29,6 +29,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string>("");
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [savedEmail, setSavedEmail] = useState<string | null>(null);
 
   // Simple validators
   const emailValid = useMemo(
@@ -37,6 +38,15 @@ export default function LoginScreen({ navigation }: Props) {
   );
   const passwordValid = useMemo(() => password.length >= 6, [password]);
   const formValid = emailValid && passwordValid;
+
+  // Check if we should show biometric button
+  // Show when: email is empty OR email matches saved email
+  const shouldShowBiometric = useMemo(() => {
+    if (!biometricAvailable || !biometricEnabled) return false;
+    if (!savedEmail) return false;
+    if (email.trim() === "") return true;
+    return email.toLowerCase() === savedEmail.toLowerCase();
+  }, [biometricAvailable, biometricEnabled, savedEmail, email]);
 
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -49,15 +59,18 @@ export default function LoginScreen({ navigation }: Props) {
       const available = await BiometricService.isAvailable();
       const enabled = await BiometricService.isEnabled();
       const typeName = await BiometricService.getBiometricTypeName();
+      const savedEmailValue = await BiometricService.getSavedEmail();
 
       setBiometricAvailable(available);
       setBiometricEnabled(enabled);
       setBiometricType(typeName);
+      setSavedEmail(savedEmailValue);
 
       console.log("[LoginScreen] Biometric status:", {
         available,
         enabled,
         typeName,
+        savedEmail: savedEmailValue,
       });
     } catch (error) {
       console.error("[LoginScreen] Error checking biometric:", error);
@@ -174,6 +187,11 @@ export default function LoginScreen({ navigation }: Props) {
           "Vui lòng đăng nhập bằng mật khẩu và bật tính năng đăng nhập sinh trắc học"
         );
         return;
+      }
+
+      // Auto-fill email if empty
+      if (email.trim() === "") {
+        setEmail(credentials.phone);
       }
 
       const authenticated = await BiometricService.authenticate(
@@ -350,22 +368,22 @@ export default function LoginScreen({ navigation }: Props) {
                   <TouchableOpacity
                     style={[
                       styles.quickOptionButton,
-                      !biometricEnabled && styles.quickOptionButtonDisabled,
+                      !shouldShowBiometric && styles.quickOptionButtonDisabled,
                     ]}
                     onPress={handleBiometricLogin}
-                    disabled={!biometricEnabled}
+                    disabled={!shouldShowBiometric}
                   >
                     <Ionicons
                       name={
                         biometricType === "Face ID" ? "scan" : "finger-print"
                       }
                       size={24}
-                      color={biometricEnabled ? "#5D7B6F" : "#cbd5e1"}
+                      color={shouldShowBiometric ? "#5D7B6F" : "#cbd5e1"}
                     />
                     <Text
                       style={[
                         styles.quickOptionText,
-                        !biometricEnabled && styles.quickOptionTextDisabled,
+                        !shouldShowBiometric && styles.quickOptionTextDisabled,
                       ]}
                     >
                       {biometricType}
@@ -375,6 +393,11 @@ export default function LoginScreen({ navigation }: Props) {
                 {!biometricEnabled && (
                   <Text style={styles.biometricHint}>
                     Đăng nhập lần đầu để bật {biometricType}
+                  </Text>
+                )}
+                {biometricEnabled && !shouldShowBiometric && savedEmail && (
+                  <Text style={styles.biometricHint}>
+                    {biometricType} chỉ khả dụng cho {savedEmail}
                   </Text>
                 )}
               </View>

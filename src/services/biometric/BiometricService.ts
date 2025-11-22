@@ -97,6 +97,19 @@ class BiometricService {
   }
 
   /**
+   * Get saved email/phone only (without password)
+   */
+  async getSavedEmail(): Promise<string | null> {
+    try {
+      const credentials = await this.getCredentials();
+      return credentials?.phone || null;
+    } catch (error) {
+      console.error("[BiometricService] Error getting saved email:", error);
+      return null;
+    }
+  }
+
+  /**
    * Check if biometric login is enabled
    */
   async isEnabled(): Promise<boolean> {

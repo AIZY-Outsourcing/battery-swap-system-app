@@ -1,11 +1,20 @@
-import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, Alert, SafeAreaView, TouchableOpacity, ScrollView } from "react-native";
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  SafeAreaView,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTheme } from "../../../theme/ThemeProvider";
 import { Input, ThemedButton } from "../../../components";
 import { AuthStackParamList } from "../../../navigation/types";
 import AuthService from "../../../services/auth/AuthService";
+import BiometricService from "../../../services/biometric/BiometricService";
 import { useAuthStore } from "../../../store/authStore";
 import { track } from "../../../services/analytics";
 
@@ -17,6 +26,9 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>("");
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   // Simple validators
   const emailValid = useMemo(
@@ -27,6 +39,30 @@ export default function LoginScreen({ navigation }: Props) {
   const formValid = emailValid && passwordValid;
 
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const available = await BiometricService.isAvailable();
+      const enabled = await BiometricService.isEnabled();
+      const typeName = await BiometricService.getBiometricTypeName();
+
+      setBiometricAvailable(available);
+      setBiometricEnabled(enabled);
+      setBiometricType(typeName);
+
+      console.log("[LoginScreen] Biometric status:", {
+        available,
+        enabled,
+        typeName,
+      });
+    } catch (error) {
+      console.error("[LoginScreen] Error checking biometric:", error);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -69,6 +105,31 @@ export default function LoginScreen({ navigation }: Props) {
       setAuth(token, user);
       track({ name: "login_success" });
 
+      // Ask user if they want to enable biometric login
+      if (biometricAvailable && !biometricEnabled) {
+        Alert.alert(
+          "Đăng nhập sinh trắc học",
+          `Bạn có muốn bật đăng nhập bằng ${biometricType}?`,
+          [
+            { text: "Để sau", style: "cancel" },
+            {
+              text: "Bật",
+              onPress: async () => {
+                try {
+                  await BiometricService.enable(email, password);
+                  setBiometricEnabled(true);
+                } catch (error) {
+                  console.error(
+                    "[LoginScreen] Error enabling biometric:",
+                    error
+                  );
+                }
+              },
+            },
+          ]
+        );
+      }
+
       // Check flags from backend response
       const needsPinSetup = (res.data as any)?.needsPinSetup ?? false;
       const needsVehicleSetup = (res.data as any)?.needsVehicleSetup ?? false;
@@ -103,6 +164,79 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
+  const handleBiometricLogin = async () => {
+    try {
+      const credentials = await BiometricService.getCredentials();
+
+      if (!credentials) {
+        Alert.alert(
+          "Chưa thiết lập",
+          "Vui lòng đăng nhập bằng mật khẩu và bật tính năng đăng nhập sinh trắc học"
+        );
+        return;
+      }
+
+      const authenticated = await BiometricService.authenticate(
+        `Đăng nhập bằng ${biometricType}`
+      );
+
+      if (!authenticated) {
+        return;
+      }
+
+      // Use saved credentials to login
+      setIsLoading(true);
+      const res = await AuthService.login({
+        email: credentials.phone,
+        password: credentials.password,
+      });
+
+      if (!res.success) {
+        Alert.alert("Lỗi", res.error?.message || "Đăng nhập thất bại");
+        return;
+      }
+
+      const token = res.data?.token;
+      const user = res.data?.user;
+
+      if (!token || !user) {
+        Alert.alert("Lỗi", "Lỗi đăng nhập - vui lòng thử lại");
+        return;
+      }
+
+      setAuth(token, user);
+      track({ name: "login_success" });
+
+      // Check flags from backend response
+      const needsPinSetup = (res.data as any)?.needsPinSetup ?? false;
+      const needsVehicleSetup = (res.data as any)?.needsVehicleSetup ?? false;
+
+      if (!user.emailVerified) {
+        navigation.replace("EmailVerification" as any);
+        return;
+      }
+
+      if (needsPinSetup) {
+        navigation.replace("PinSetup");
+        return;
+      }
+
+      if (needsVehicleSetup) {
+        navigation.replace("VehicleSetup");
+        return;
+      }
+
+      navigation.getParent()?.reset({
+        index: 0,
+        routes: [{ name: "AppStack" as any }],
+      });
+    } catch (error: any) {
+      Alert.alert("Lỗi", error.message || "Đăng nhập thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleQuickLogin = () => {
     // For testing purposes - navigate directly to main app
     navigation.navigate("VehicleSetup", { userId: "test-user-123" });
@@ -110,7 +244,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -118,131 +252,149 @@ export default function LoginScreen({ navigation }: Props) {
       >
         {/* Header */}
         <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#5D7B6F" />
-        </TouchableOpacity>
-        <View style={styles.logoContainer}>
-          <MaterialCommunityIcons 
-            name="battery-charging-medium" 
-            size={40} 
-            color="#5D7B6F" 
-          />
-        </View>
-        <View style={styles.placeholder} />
-      </View>
-
-      {/* Main Content */}
-      <View style={styles.content}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Đăng nhập</Text>
-          <Text style={styles.subtitle}>Chào mừng bạn trở lại!</Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email / Số điện thoại</Text>
-            <View style={styles.inputWrapper}>
-              <Input
-                placeholder="Nhập email hoặc số điện thoại"
-                placeholderTextColor="#94a3b8"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                error={
-                  email.length > 0 && !emailValid
-                    ? "Email / SĐT không hợp lệ"
-                    : undefined
-                }
-                style={styles.input}
-                containerStyle={styles.inputContainerStyle}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Mật khẩu</Text>
-            <View style={styles.inputWrapper}>
-              <Input
-                placeholder="Nhập mật khẩu"
-                placeholderTextColor="#94a3b8"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                error={
-                  password.length > 0 && !passwordValid
-                    ? "Ít nhất 6 ký tự"
-                    : undefined
-                }
-                style={styles.input}
-                containerStyle={styles.inputContainerStyle}
-              />
-              <TouchableOpacity 
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#5D7B6F" 
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Login Button */}
           <TouchableOpacity
-            style={[
-              styles.loginButton,
-              (!formValid || isLoading) && styles.loginButtonDisabled
-            ]}
-            onPress={handleLogin}
-            disabled={!formValid || isLoading}
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
           >
-            <Text style={styles.loginButtonText}>
-              {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+            <Ionicons name="arrow-back" size={24} color="#5D7B6F" />
+          </TouchableOpacity>
+          <View style={styles.logoContainer}>
+            <MaterialCommunityIcons
+              name="battery-charging-medium"
+              size={40}
+              color="#5D7B6F"
+            />
+          </View>
+          <View style={styles.placeholder} />
+        </View>
+
+        {/* Main Content */}
+        <View style={styles.content}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>Đăng nhập</Text>
+            <Text style={styles.subtitle}>Chào mừng bạn trở lại!</Text>
+          </View>
+
+          {/* Form */}
+          <View style={styles.formContainer}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email / Số điện thoại</Text>
+              <View style={styles.inputWrapper}>
+                <Input
+                  placeholder="Nhập email hoặc số điện thoại"
+                  placeholderTextColor="#94a3b8"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={
+                    email.length > 0 && !emailValid
+                      ? "Email / SĐT không hợp lệ"
+                      : undefined
+                  }
+                  style={styles.input}
+                  containerStyle={styles.inputContainerStyle}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Mật khẩu</Text>
+              <View style={styles.inputWrapper}>
+                <Input
+                  placeholder="Nhập mật khẩu"
+                  placeholderTextColor="#94a3b8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  error={
+                    password.length > 0 && !passwordValid
+                      ? "Ít nhất 6 ký tự"
+                      : undefined
+                  }
+                  style={styles.input}
+                  containerStyle={styles.inputContainerStyle}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#5D7B6F"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[
+                styles.loginButton,
+                (!formValid || isLoading) && styles.loginButtonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={!formValid || isLoading}
+            >
+              <Text style={styles.loginButtonText}>
+                {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Quick Options */}
+            {biometricAvailable && (
+              <View style={styles.quickOptionsContainer}>
+                <Text style={styles.quickOptionsTitle}>Đăng nhập nhanh</Text>
+                <View style={styles.quickOptionsRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.quickOptionButton,
+                      !biometricEnabled && styles.quickOptionButtonDisabled,
+                    ]}
+                    onPress={handleBiometricLogin}
+                    disabled={!biometricEnabled}
+                  >
+                    <Ionicons
+                      name={
+                        biometricType === "Face ID" ? "scan" : "finger-print"
+                      }
+                      size={24}
+                      color={biometricEnabled ? "#5D7B6F" : "#cbd5e1"}
+                    />
+                    <Text
+                      style={[
+                        styles.quickOptionText,
+                        !biometricEnabled && styles.quickOptionTextDisabled,
+                      ]}
+                    >
+                      {biometricType}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {!biometricEnabled && (
+                  <Text style={styles.biometricHint}>
+                    Đăng nhập lần đầu để bật {biometricType}
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={() => navigation.navigate("Register")}
+          >
+            <Text style={styles.registerButtonText}>
+              Chưa có tài khoản?{" "}
+              <Text style={styles.registerButtonTextBold}>Đăng ký</Text>
             </Text>
           </TouchableOpacity>
-
-          {/* Quick Options */}
-          <View style={styles.quickOptionsContainer}>
-            <Text style={styles.quickOptionsTitle}>Đăng nhập nhanh</Text>
-            <View style={styles.quickOptionsRow}>
-              <TouchableOpacity 
-                style={styles.quickOptionButton}
-                onPress={() => {/* Biometric login coming soon */}}
-              >
-                <Ionicons name="finger-print" size={24} color="#5D7B6F" />
-                <Text style={styles.quickOptionText}>Vân tay</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickOptionButton}
-                onPress={() => {/* Face ID login coming soon */}}
-              >
-                <Ionicons name="scan" size={24} color="#5D7B6F" />
-                <Text style={styles.quickOptionText}>Face ID</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Text style={styles.versionText}>BSS v1.0.0</Text>
         </View>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.registerButton}
-          onPress={() => navigation.navigate("Register")}
-        >
-          <Text style={styles.registerButtonText}>
-            Chưa có tài khoản? <Text style={styles.registerButtonTextBold}>Đăng ký</Text>
-          </Text>
-        </TouchableOpacity>
-        <Text style={styles.versionText}>BSS v1.0.0</Text>
-      </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -393,11 +545,25 @@ const styles = StyleSheet.create({
     borderColor: "#B0D4B8",
     minWidth: 80,
   },
+  quickOptionButtonDisabled: {
+    backgroundColor: "#f1f5f9",
+    borderColor: "#e2e8f0",
+    opacity: 0.6,
+  },
   quickOptionText: {
     fontSize: 12,
     color: "#5D7B6F",
     marginTop: 8,
     fontWeight: "500",
+  },
+  quickOptionTextDisabled: {
+    color: "#cbd5e1",
+  },
+  biometricHint: {
+    fontSize: 11,
+    color: "#94a3b8",
+    marginTop: 8,
+    textAlign: "center",
   },
   footer: {
     paddingHorizontal: 20,

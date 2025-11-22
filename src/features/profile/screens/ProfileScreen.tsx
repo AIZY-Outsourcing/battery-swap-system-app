@@ -10,6 +10,7 @@ import {
   Switch,
   SafeAreaView,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import {
@@ -19,6 +20,7 @@ import {
 import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import AuthService from "../../../services/auth/AuthService";
+import BiometricService from "../../../services/biometric/BiometricService";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { styleTokens } from "../../../styles/tokens";
 import { useAuthStore } from "../../../store/authStore";
@@ -92,7 +94,9 @@ const MenuItem = ({ item }: { item: MenuItemDef }) => {
 export default function ProfileScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   const user = useAuthStore((state) => state.user);
-  const [faceIDEnabled, setFaceIDEnabled] = useState(true);
+  const [faceIDEnabled, setFaceIDEnabled] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>("Face ID");
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loadingSubscriptions, setLoadingSubscriptions] = useState(true);
   const [swapCredits, setSwapCredits] = useState<SwapCredits | null>(null);
@@ -108,11 +112,152 @@ export default function ProfileScreen({ navigation }: Props) {
     (swapCredits?.remaining_credits ?? 0) +
     (swapCredits?.total_remaining_quota_swaps ?? 0);
 
+  // Check biometric availability
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
   // Load user subscriptions and swap credits
   useEffect(() => {
     loadSubscriptions();
     loadSwapCredits();
   }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const available = await BiometricService.isAvailable();
+      setBiometricAvailable(available);
+
+      if (available) {
+        const type = await BiometricService.getBiometricTypeName();
+        setBiometricType(type);
+
+        const credentials = await BiometricService.getCredentials();
+        setFaceIDEnabled(!!credentials);
+      }
+    } catch (error) {
+      console.error("Error checking biometric availability:", error);
+    }
+  };
+
+  const handleBiometricToggle = async (enabled: boolean) => {
+    if (!biometricAvailable) {
+      Alert.alert(
+        t("biometric.unavailable.title", { defaultValue: "Không khả dụng" }),
+        t("biometric.unavailable.message", {
+          defaultValue: `Thiết bị của bạn không hỗ trợ ${biometricType}`,
+        })
+      );
+      return;
+    }
+
+    if (enabled) {
+      // User wants to enable biometric - prompt for password
+      Alert.prompt(
+        t("biometric.enable.title", { defaultValue: `Bật ${biometricType}` }),
+        t("biometric.enable.passwordPrompt", {
+          defaultValue: "Nhập mật khẩu của bạn để xác thực",
+        }),
+        [
+          {
+            text: t("common.cancel", { defaultValue: "Hủy" }),
+            style: "cancel",
+          },
+          {
+            text: t("biometric.enable.confirm", { defaultValue: "Xác nhận" }),
+            onPress: async (password?: string) => {
+              if (!password || password.trim().length === 0) {
+                Alert.alert(
+                  t("error.title", { defaultValue: "Lỗi" }),
+                  t("biometric.enable.passwordRequired", {
+                    defaultValue: "Vui lòng nhập mật khẩu",
+                  })
+                );
+                return;
+              }
+
+              try {
+                // Verify password by attempting login
+                const email = user?.email || user?.phone || "";
+                if (!email) {
+                  Alert.alert(
+                    t("error.title", { defaultValue: "Lỗi" }),
+                    t("biometric.enable.noEmail", {
+                      defaultValue: "Không tìm thấy thông tin tài khoản",
+                    })
+                  );
+                  return;
+                }
+
+                const res = await AuthService.login({
+                  email,
+                  password: password.trim(),
+                });
+
+                if (!res.success) {
+                  Alert.alert(
+                    t("error.title", { defaultValue: "Lỗi" }),
+                    t("biometric.enable.wrongPassword", {
+                      defaultValue: "Mật khẩu không đúng",
+                    })
+                  );
+                  return;
+                }
+
+                // Password is correct, save credentials
+                await BiometricService.enable(email, password.trim());
+                setFaceIDEnabled(true);
+
+                Alert.alert(
+                  t("common.success", { defaultValue: "Thành công" }),
+                  t("biometric.enabled", {
+                    defaultValue: `${biometricType} đã được bật. Bạn có thể sử dụng ${biometricType} để đăng nhập lần sau.`,
+                  })
+                );
+              } catch (error: any) {
+                Alert.alert(
+                  t("error.title", { defaultValue: "Lỗi" }),
+                  error.message ||
+                    t("biometric.enable.failed", {
+                      defaultValue: "Không thể bật sinh trắc học",
+                    })
+                );
+              }
+            },
+          },
+        ],
+        "secure-text"
+      );
+    } else {
+      // User wants to disable biometric
+      Alert.alert(
+        t("biometric.disable.title", { defaultValue: `Tắt ${biometricType}` }),
+        t("biometric.disable.message", {
+          defaultValue: `Bạn có chắc muốn tắt đăng nhập bằng ${biometricType}?`,
+        }),
+        [
+          {
+            text: t("common.cancel", { defaultValue: "Hủy" }),
+            style: "cancel",
+          },
+          {
+            text: t("biometric.disable.confirm", { defaultValue: "Tắt" }),
+            style: "destructive",
+            onPress: async () => {
+              await BiometricService.disable();
+              setFaceIDEnabled(false);
+              Alert.alert(
+                t("common.success", { defaultValue: "Thành công" }),
+                t("biometric.disabled", {
+                  defaultValue: `${biometricType} đã được tắt`,
+                })
+              );
+            },
+          },
+        ]
+      );
+    }
+  };
 
   const loadSwapCredits = async () => {
     try {
@@ -258,14 +403,18 @@ export default function ProfileScreen({ navigation }: Props) {
     () => [
       {
         key: "faceid",
-        icon: "face-recognition",
-        label: t("faceid"),
+        icon: biometricType === "Face ID" ? "face-recognition" : "fingerprint",
+        label: biometricAvailable
+          ? biometricType
+          : t("biometric.notAvailable", {
+              defaultValue: "Sinh trắc học không khả dụng",
+            }),
         toggle: true,
         toggleValue: faceIDEnabled,
-        onToggle: setFaceIDEnabled,
+        onToggle: handleBiometricToggle,
       },
     ],
-    [t, faceIDEnabled]
+    [t, faceIDEnabled, biometricAvailable, biometricType]
   );
 
   return (

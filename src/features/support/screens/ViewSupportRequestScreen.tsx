@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import SupportService, {
   SupportTicket,
 } from "../../../services/api/SupportService";
@@ -25,6 +26,7 @@ type ViewSupportRequestRouteProp = RouteProp<
 const ViewSupportRequestScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<ViewSupportRequestRouteProp>();
+  const { t } = useTranslation();
   const { ticketId } = route.params;
 
   const [loading, setLoading] = useState(true);
@@ -41,9 +43,9 @@ const ViewSupportRequestScreen = () => {
       setTicket(response.data);
     } catch (error) {
       console.error("Error loading ticket:", error);
-      Alert.alert("Lỗi", "Không thể tải thông tin yêu cầu", [
+      Alert.alert(t("common.error"), t("support.loadError"), [
         {
-          text: "OK",
+          text: t("common.ok"),
           onPress: () => navigation.goBack(),
         },
       ]);
@@ -70,13 +72,13 @@ const ViewSupportRequestScreen = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "open":
-        return "Mới";
+        return t("support.statusNew");
       case "in_progress":
-        return "Đang xử lý";
+        return t("support.statusInProgress");
       case "resolved":
-        return "Đã giải quyết";
+        return t("support.statusResolved");
       case "closed":
-        return "Đã đóng";
+        return t("support.statusClosed");
       default:
         return status;
     }
@@ -84,8 +86,7 @@ const ViewSupportRequestScreen = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const adjustedDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-    return adjustedDate.toLocaleString("vi-VN", {
+    return date.toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -99,7 +100,7 @@ const ViewSupportRequestScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#34C759" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <Text style={styles.loadingText}>{t("vehicle.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -109,7 +110,7 @@ const ViewSupportRequestScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.emptyText}>Không tìm thấy yêu cầu</Text>
+          <Text style={styles.emptyText}>{t("support.noRequests")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -125,7 +126,9 @@ const ViewSupportRequestScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chi tiết yêu cầu</Text>
+        <Text style={styles.headerTitle}>
+          {t("support.detail.title", { defaultValue: "Chi tiết yêu cầu" })}
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -146,14 +149,18 @@ const ViewSupportRequestScreen = () => {
 
         {/* Title */}
         <View style={styles.section}>
-          <Text style={styles.label}>Tiêu đề</Text>
+          <Text style={styles.label}>
+            {t("support.detail.subject", { defaultValue: "Tiêu đề" })}
+          </Text>
           <Text style={styles.value}>{ticket.title}</Text>
         </View>
 
         {/* Subject */}
         {ticket.subject && (
           <View style={styles.section}>
-            <Text style={styles.label}>Chủ đề</Text>
+            <Text style={styles.label}>
+              {t("support.detail.category", { defaultValue: "Chủ đề" })}
+            </Text>
             <View style={styles.chip}>
               <Text style={styles.chipText}>{ticket.subject.name}</Text>
             </View>
@@ -163,7 +170,9 @@ const ViewSupportRequestScreen = () => {
         {/* Station */}
         {ticket.station && (
           <View style={styles.section}>
-            <Text style={styles.label}>Trạm</Text>
+            <Text style={styles.label}>
+              {t("support.detail.station", { defaultValue: "Trạm" })}
+            </Text>
             <View style={styles.stationCard}>
               <Ionicons name="location" size={20} color="#34C759" />
               <View style={styles.stationInfo}>
@@ -178,7 +187,11 @@ const ViewSupportRequestScreen = () => {
 
         {/* Description */}
         <View style={styles.section}>
-          <Text style={styles.label}>Mô tả chi tiết</Text>
+          <Text style={styles.label}>
+            {t("support.detail.description", {
+              defaultValue: "Mô tả chi tiết",
+            })}
+          </Text>
           <View style={styles.descriptionBox}>
             <Text style={styles.descriptionText}>{ticket.description}</Text>
           </View>
@@ -187,7 +200,11 @@ const ViewSupportRequestScreen = () => {
         {/* Images */}
         {ticket.support_images && ticket.support_images.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.label}>Hình ảnh đính kèm</Text>
+            <Text style={styles.label}>
+              {t("support.detail.images", {
+                defaultValue: "Hình ảnh đính kèm",
+              })}
+            </Text>
             <View style={styles.imagesContainer}>
               {ticket.support_images.map((image, index) => (
                 <Image
@@ -202,18 +219,26 @@ const ViewSupportRequestScreen = () => {
 
         {/* Timestamps */}
         <View style={styles.section}>
-          <Text style={styles.label}>Thông tin thời gian</Text>
+          <Text style={styles.label}>
+            {t("support.detail.timeInfo", {
+              defaultValue: "Thông tin thời gian",
+            })}
+          </Text>
           <View style={styles.timestampContainer}>
             <View style={styles.timestampRow}>
               <Ionicons name="time-outline" size={16} color="#666" />
-              <Text style={styles.timestampLabel}>Tạo lúc:</Text>
+              <Text style={styles.timestampLabel}>
+                {t("support.detail.createdAt", { defaultValue: "Tạo lúc:" })}
+              </Text>
               <Text style={styles.timestampValue}>
                 {formatDate(ticket.created_at)}
               </Text>
             </View>
             <View style={styles.timestampRow}>
               <Ionicons name="refresh-outline" size={16} color="#666" />
-              <Text style={styles.timestampLabel}>Cập nhật:</Text>
+              <Text style={styles.timestampLabel}>
+                {t("support.detail.updatedAt", { defaultValue: "Cập nhật:" })}
+              </Text>
               <Text style={styles.timestampValue}>
                 {formatDate(ticket.updated_at)}
               </Text>
@@ -223,7 +248,9 @@ const ViewSupportRequestScreen = () => {
 
         {/* ID for reference */}
         <View style={styles.section}>
-          <Text style={styles.label}>Mã yêu cầu</Text>
+          <Text style={styles.label}>
+            {t("support.detail.requestId", { defaultValue: "Mã yêu cầu" })}
+          </Text>
           <Text style={styles.idText}>{ticket.id}</Text>
         </View>
       </ScrollView>

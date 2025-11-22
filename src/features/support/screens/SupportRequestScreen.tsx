@@ -105,13 +105,19 @@ const SupportRequestScreen = () => {
   };
 
   const formatDate = (dateString: string) => {
-    // Backend returns UTC time, need to add 7 hours for Vietnam timezone (UTC+7)
+    // Backend returns UTC time, convert to Vietnam timezone (UTC+7)
     const date = new Date(dateString);
-    const adjustedDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+
+    // Get the time in milliseconds and adjust for Vietnam timezone
+    // Note: getTime() returns UTC milliseconds, we need to add 7 hours
+    const vietnamOffset = 7 * 60 * 60 * 1000; // 7 hours in milliseconds
+    const vietnamTime = new Date(date.getTime() + vietnamOffset);
+
     const now = new Date();
+    const nowVietnam = new Date(now.getTime() + vietnamOffset);
 
     // Calculate difference in milliseconds
-    const diffMs = now.getTime() - adjustedDate.getTime();
+    const diffMs = nowVietnam.getTime() - vietnamTime.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -125,7 +131,7 @@ const SupportRequestScreen = () => {
     } else if (diffDays < 7) {
       return `${diffDays} ${t("support.daysAgo")}`;
     } else {
-      return adjustedDate.toLocaleDateString("vi-VN", {
+      return vietnamTime.toLocaleDateString("vi-VN", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -215,7 +221,7 @@ const SupportRequestScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#5D7B6F" />
           <Text style={styles.loadingText}>{t("vehicle.loading")}</Text>
         </View>
       </SafeAreaView>

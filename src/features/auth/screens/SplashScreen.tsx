@@ -113,7 +113,7 @@ const SplashScreen = () => {
 
       {isCheckingAuth ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#5D7B6F" />
           <Text style={styles.loadingText}>
             Đang kiểm tra trạng thái đăng nhập...
           </Text>
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#007AFF",
+    color: "#5D7B6F",
     marginBottom: 8,
   },
   tagline: {

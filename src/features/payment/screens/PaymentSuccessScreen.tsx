@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -22,10 +22,26 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { order } = route.params;
 
+  // Auto navigate to Home after 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Navigate back to MainTabs and then to Home with refresh flag
+      navigation.navigate("MainTabs", {
+        screen: "Home",
+        params: { shouldRefreshCredits: true },
+      });
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [navigation]);
+
   const formatVnd = (amount: string | number) => {
     const numAmount = typeof amount === "string" ? parseInt(amount) : amount;
-    return numAmount.toLocaleString(i18n.language.startsWith("vi") ? "vi-VN" : "en-US") +
-      (i18n.language.startsWith("vi") ? "đ" : "₫");
+    return (
+      numAmount.toLocaleString(
+        i18n.language.startsWith("vi") ? "vi-VN" : "en-US"
+      ) + (i18n.language.startsWith("vi") ? "đ" : "₫")
+    );
   };
 
   const handleGoHome = () => {
@@ -42,14 +58,20 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
         {/* Success Header */}
         <View style={styles.successHeader}>
           <View style={styles.successIcon}>
-            <MaterialCommunityIcons name="check-circle" size={80} color="#34c759" />
+            <MaterialCommunityIcons
+              name="check-circle"
+              size={80}
+              color="#34c759"
+            />
           </View>
           <Text style={styles.successTitle}>
-            {i18n.language.startsWith("vi") ? "Thanh toán thành công!" : "Payment Successful!"}
+            {i18n.language.startsWith("vi")
+              ? "Thanh toán thành công!"
+              : "Payment Successful!"}
           </Text>
           <Text style={styles.successSubtitle}>
-            {i18n.language.startsWith("vi") 
-              ? "Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi" 
+            {i18n.language.startsWith("vi")
+              ? "Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi"
               : "Thank you for using our service"}
           </Text>
         </View>
@@ -57,7 +79,9 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
         {/* Order Summary */}
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryTitle}>
-            {i18n.language.startsWith("vi") ? "Tóm tắt đơn hàng" : "Order Summary"}
+            {i18n.language.startsWith("vi")
+              ? "Tóm tắt đơn hàng"
+              : "Order Summary"}
           </Text>
 
           {/* Order Info */}
@@ -80,7 +104,9 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>
-                {i18n.language.startsWith("vi") ? "Tổng thanh toán" : "Total Amount"}
+                {i18n.language.startsWith("vi")
+                  ? "Tổng thanh toán"
+                  : "Total Amount"}
               </Text>
               <Text style={[styles.infoText, styles.amountText]}>
                 {formatVnd(order.total_amount)}
@@ -103,7 +129,9 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
           {order.package && (
             <View style={styles.infoSection}>
               <Text style={styles.sectionTitle}>
-                {i18n.language.startsWith("vi") ? "Thông tin gói" : "Package Information"}
+                {i18n.language.startsWith("vi")
+                  ? "Thông tin gói"
+                  : "Package Information"}
               </Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
@@ -116,7 +144,8 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
                   {i18n.language.startsWith("vi") ? "Thời hạn" : "Duration"}
                 </Text>
                 <Text style={styles.infoText}>
-                  {order.package.duration_days} {i18n.language.startsWith("vi") ? "ngày" : "days"}
+                  {order.package.duration_days}{" "}
+                  {i18n.language.startsWith("vi") ? "ngày" : "days"}
                 </Text>
               </View>
               <View style={styles.infoRow}>
@@ -124,7 +153,8 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
                   {i18n.language.startsWith("vi") ? "Số lượt đổi" : "Swaps"}
                 </Text>
                 <Text style={styles.infoText}>
-                  {order.package.quota_swaps} {i18n.language.startsWith("vi") ? "lượt" : "swaps"}
+                  {order.package.quota_swaps}{" "}
+                  {i18n.language.startsWith("vi") ? "lượt" : "swaps"}
                 </Text>
               </View>
             </View>
@@ -133,14 +163,18 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
           {order.type === "single" && (
             <View style={styles.infoSection}>
               <Text style={styles.sectionTitle}>
-                {i18n.language.startsWith("vi") ? "Thông tin lượt đổi" : "Swap Information"}
+                {i18n.language.startsWith("vi")
+                  ? "Thông tin lượt đổi"
+                  : "Swap Information"}
               </Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
                   {i18n.language.startsWith("vi") ? "Loại" : "Type"}
                 </Text>
                 <Text style={styles.infoText}>
-                  {i18n.language.startsWith("vi") ? "Lượt đổi đơn" : "Single Swaps"}
+                  {i18n.language.startsWith("vi")
+                    ? "Lượt đổi đơn"
+                    : "Single Swaps"}
                 </Text>
               </View>
               <View style={styles.infoRow}>
@@ -148,7 +182,8 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
                   {i18n.language.startsWith("vi") ? "Số lượng" : "Quantity"}
                 </Text>
                 <Text style={styles.infoText}>
-                  {order.quantity} {i18n.language.startsWith("vi") ? "lượt" : "swaps"}
+                  {order.quantity}{" "}
+                  {i18n.language.startsWith("vi") ? "lượt" : "swaps"}
                 </Text>
               </View>
             </View>
@@ -160,21 +195,25 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
           <Text style={styles.nextStepsTitle}>
             {i18n.language.startsWith("vi") ? "Bước tiếp theo" : "Next Steps"}
           </Text>
-          
+
           <View style={styles.stepItem}>
             <MaterialCommunityIcons name="battery" size={20} color="#5D7B6F" />
             <Text style={styles.stepText}>
-              {i18n.language.startsWith("vi") 
-                ? "Bạn có thể sử dụng lượt đổi ngay bây giờ" 
+              {i18n.language.startsWith("vi")
+                ? "Bạn có thể sử dụng lượt đổi ngay bây giờ"
                 : "You can use your swaps right now"}
             </Text>
           </View>
 
           <View style={styles.stepItem}>
-            <MaterialCommunityIcons name="map-marker" size={20} color="#5D7B6F" />
+            <MaterialCommunityIcons
+              name="map-marker"
+              size={20}
+              color="#5D7B6F"
+            />
             <Text style={styles.stepText}>
-              {i18n.language.startsWith("vi") 
-                ? "Tìm trạm đổi pin gần nhất để sử dụng" 
+              {i18n.language.startsWith("vi")
+                ? "Tìm trạm đổi pin gần nhất để sử dụng"
                 : "Find the nearest battery swap station to use"}
             </Text>
           </View>
@@ -182,8 +221,13 @@ export default function PaymentSuccessScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Action Buttons */}
-      <View style={[styles.actionContainer, { paddingBottom: 16 + insets.bottom }]}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleViewOrder}>
+      <View
+        style={[styles.actionContainer, { paddingBottom: 16 + insets.bottom }]}
+      >
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleViewOrder}
+        >
           <MaterialCommunityIcons name="receipt" size={20} color="#5D7B6F" />
           <Text style={styles.secondaryButtonText}>
             {i18n.language.startsWith("vi") ? "Xem chi tiết" : "View Details"}

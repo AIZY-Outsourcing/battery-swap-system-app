@@ -16,6 +16,7 @@ import type { RootStackParamList } from "../../navigation/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { orderService, Order } from "../../../services/api/OrderService";
+import { swapCreditsService } from "../../../services/api/SwapCreditsService";
 import { useNotification } from "../../../contexts/NotificationContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OrderDetails">;
@@ -23,10 +24,43 @@ type Props = NativeStackScreenProps<RootStackParamList, "OrderDetails">;
 export default function OrderDetailsScreen({ navigation, route }: Props) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { order: orderData } = route.params;
+  const { order: orderData, shouldRefresh } = route.params;
   const [order, setOrder] = useState<Order | null>(orderData || null);
   const [isPolling, setIsPolling] = useState(false);
   const { showNotification } = useNotification();
+
+  // Reload swap credits when returning from payment success
+  useEffect(() => {
+    if (shouldRefresh) {
+      console.log(
+        "🔄 [OrderDetails] Refreshing swap credits after payment success"
+      );
+      swapCreditsService
+        .getMySwapCredits()
+        .then((response) => {
+          if (response.success) {
+            console.log(
+              "✅ [OrderDetails] Swap credits refreshed:",
+              response.data
+            );
+            showNotification({
+              type: "success",
+              title: i18n.language.startsWith("vi") ? "Đã cập nhật" : "Updated",
+              message: i18n.language.startsWith("vi")
+                ? "Số dư lượt đổi đã được cập nhật"
+                : "Swap credits balance updated",
+              duration: 2000,
+            });
+          }
+        })
+        .catch((error) => {
+          console.error(
+            "❌ [OrderDetails] Error refreshing swap credits:",
+            error
+          );
+        });
+    }
+  }, [shouldRefresh, i18n.language, showNotification]);
 
   // Polling effect to check order status every 5 seconds
   useEffect(() => {
@@ -35,37 +69,48 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
       return;
     }
 
-    console.log("🔄 Starting polling for order:", order.id, "Status:", order.status);
+    console.log(
+      "🔄 Starting polling for order:",
+      order.id,
+      "Status:",
+      order.status
+    );
     setIsPolling(true);
-    
+
     const interval = setInterval(async () => {
       try {
         console.log("⏰ Polling order status...");
         const response = await orderService.getOrder(order.id);
         console.log("📡 Polling response:", response);
-        
+
         if (response.success && response.data) {
           console.log("✅ Order status received:", response.data.status);
-          
+
           // Only update status, keep other order data unchanged
-          setOrder(prevOrder => {
+          setOrder((prevOrder) => {
             if (prevOrder) {
               return {
                 ...prevOrder,
-                status: response.data.status
+                status: response.data.status,
               };
             }
             return prevOrder;
           });
-          
+
           // Stop polling if order is no longer pending
           if (response.data.status !== "pending") {
-            console.log("🛑 Stopping polling - Status changed to:", response.data.status);
+            console.log(
+              "🛑 Stopping polling - Status changed to:",
+              response.data.status
+            );
             setIsPolling(false);
             clearInterval(interval);
-            
-            // Show success message if paid
-            if (response.data.status === "paid") {
+
+            // Show success message if paid or success
+            if (
+              response.data.status === "paid" ||
+              response.data.status === "success"
+            ) {
               console.log("🎉 Payment successful!");
               navigation.navigate("PaymentSuccess", { order: response.data });
             }
@@ -87,8 +132,11 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
 
   const formatVnd = (amount: string | number) => {
     const numAmount = typeof amount === "string" ? parseInt(amount) : amount;
-    return numAmount.toLocaleString(i18n.language.startsWith("vi") ? "vi-VN" : "en-US") +
-      (i18n.language.startsWith("vi") ? "đ" : "₫");
+    return (
+      numAmount.toLocaleString(
+        i18n.language.startsWith("vi") ? "vi-VN" : "en-US"
+      ) + (i18n.language.startsWith("vi") ? "đ" : "₫")
+    );
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -105,7 +153,11 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={48} color="#ff6b6b" />
+          <MaterialCommunityIcons
+            name="alert-circle"
+            size={48}
+            color="#ff6b6b"
+          />
           <Text style={styles.errorText}>{t("order.notFound")}</Text>
         </View>
       </SafeAreaView>
@@ -117,27 +169,37 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Text style={styles.headerTitle}>
-          {i18n.language.startsWith("vi") ? "Thanh toán chuyển khoản" : "Bank Transfer Payment"}
+          {i18n.language.startsWith("vi")
+            ? "Thanh toán chuyển khoản"
+            : "Bank Transfer Payment"}
         </Text>
 
         {/* Order Status */}
         <View style={styles.statusContainer}>
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>
-              {i18n.language.startsWith("vi") ? "Trạng thái đơn hàng" : "Order Status"}
+              {i18n.language.startsWith("vi")
+                ? "Trạng thái đơn hàng"
+                : "Order Status"}
             </Text>
             <View style={styles.statusValue}>
-              <Text style={[
-                styles.statusText,
-                order.status === "paid" && styles.statusPaid,
-                order.status === "pending" && styles.statusPending,
-                order.status === "cancelled" && styles.statusCancelled,
-                order.status === "expired" && styles.statusExpired,
-              ]}>
+              <Text
+                style={[
+                  styles.statusText,
+                  order.status === "paid" && styles.statusPaid,
+                  order.status === "pending" && styles.statusPending,
+                  order.status === "cancelled" && styles.statusCancelled,
+                  order.status === "expired" && styles.statusExpired,
+                ]}
+              >
                 {order.status.toUpperCase()}
               </Text>
               {isPolling && order.status === "pending" && (
-                <ActivityIndicator size="small" color="#5D7B6F" style={styles.pollingIndicator} />
+                <ActivityIndicator
+                  size="small"
+                  color="#5D7B6F"
+                  style={styles.pollingIndicator}
+                />
               )}
             </View>
           </View>
@@ -146,16 +208,22 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
         {/* Account information */}
         <View style={styles.accountInfoBox}>
           <Text style={styles.accountInfoTitle}>
-            {i18n.language.startsWith("vi") ? "Nhập thông tin tài khoản được cung cấp" : "Enter the provided account information"}
+            {i18n.language.startsWith("vi")
+              ? "Nhập thông tin tài khoản được cung cấp"
+              : "Enter the provided account information"}
           </Text>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {i18n.language.startsWith("vi") ? "Ngân hàng thụ hưởng" : "Beneficiary Bank"}
+              {i18n.language.startsWith("vi")
+                ? "Ngân hàng thụ hưởng"
+                : "Beneficiary Bank"}
             </Text>
             <View style={styles.infoValue}>
               <Text style={styles.bankName}>
-                {order.payment_info?.bank_id === "970422" ? "VPBank" : `Bank ${order.payment_info?.bank_id || "N/A"}`}
+                {order.payment_info?.bank_id === "970422"
+                  ? "VPBank"
+                  : `Bank ${order.payment_info?.bank_id || "N/A"}`}
               </Text>
               <View style={styles.bankLogoSmall} />
             </View>
@@ -163,12 +231,27 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {i18n.language.startsWith("vi") ? "Số tài khoản" : "Account Number"}
+              {i18n.language.startsWith("vi")
+                ? "Số tài khoản"
+                : "Account Number"}
             </Text>
             <View style={styles.infoValue}>
-              <Text style={styles.infoText}>{order.payment_info?.account_no || "N/A"}</Text>
-              <TouchableOpacity onPress={() => copyToClipboard(order.payment_info?.account_no || "", "Account Number")}>
-                <MaterialCommunityIcons name="content-copy" size={20} color="#5D7B6F" />
+              <Text style={styles.infoText}>
+                {order.payment_info?.account_no || "N/A"}
+              </Text>
+              <TouchableOpacity
+                onPress={() =>
+                  copyToClipboard(
+                    order.payment_info?.account_no || "",
+                    "Account Number"
+                  )
+                }
+              >
+                <MaterialCommunityIcons
+                  name="content-copy"
+                  size={20}
+                  color="#5D7B6F"
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -178,9 +261,19 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
               {i18n.language.startsWith("vi") ? "Số tiền" : "Amount"}
             </Text>
             <View style={styles.infoValue}>
-              <Text style={styles.infoText}>{formatVnd(order.total_amount)}</Text>
-              <TouchableOpacity onPress={() => copyToClipboard(order.total_amount.toString(), "Amount")}>
-                <MaterialCommunityIcons name="content-copy" size={20} color="#5D7B6F" />
+              <Text style={styles.infoText}>
+                {formatVnd(order.total_amount)}
+              </Text>
+              <TouchableOpacity
+                onPress={() =>
+                  copyToClipboard(order.total_amount.toString(), "Amount")
+                }
+              >
+                <MaterialCommunityIcons
+                  name="content-copy"
+                  size={20}
+                  color="#5D7B6F"
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -190,16 +283,26 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
               {i18n.language.startsWith("vi") ? "Họ và tên" : "Full Name"}
             </Text>
             <Text style={styles.infoText}>
-              {order.payment_info?.account_name || order.user?.name || (i18n.language.startsWith("vi") ? "Công Ty CP CN Sen Đỏ" : "Sen Do Technology Company")}
+              {order.payment_info?.account_name ||
+                order.user?.name ||
+                (i18n.language.startsWith("vi")
+                  ? "Công Ty CP CN Sen Đỏ"
+                  : "Sen Do Technology Company")}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
-              {i18n.language.startsWith("vi") ? "Nội dung chuyển khoản" : "Transfer Content"}
+              {i18n.language.startsWith("vi")
+                ? "Nội dung chuyển khoản"
+                : "Transfer Content"}
             </Text>
             <Text style={styles.infoText}>
-              {order.payment_info?.description || order.payment?.content || (i18n.language.startsWith("vi") ? "Thanh toán đơn hàng" : "Order payment")}
+              {order.payment_info?.description ||
+                order.payment?.content ||
+                (i18n.language.startsWith("vi")
+                  ? "Thanh toán đơn hàng"
+                  : "Order payment")}
             </Text>
           </View>
 
@@ -207,7 +310,9 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
           {order.package && (
             <View style={styles.packageSection}>
               <Text style={styles.packageTitle}>
-                {i18n.language.startsWith("vi") ? "Thông tin gói đã chọn" : "Selected Package"}
+                {i18n.language.startsWith("vi")
+                  ? "Thông tin gói đã chọn"
+                  : "Selected Package"}
               </Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
@@ -219,13 +324,19 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
                 <Text style={styles.infoLabel}>
                   {i18n.language.startsWith("vi") ? "Thời hạn" : "Duration"}
                 </Text>
-                <Text style={styles.infoText}>{order.package.duration_days} {i18n.language.startsWith("vi") ? "ngày" : "days"}</Text>
+                <Text style={styles.infoText}>
+                  {order.package.duration_days}{" "}
+                  {i18n.language.startsWith("vi") ? "ngày" : "days"}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
                   {i18n.language.startsWith("vi") ? "Số lượt đổi" : "Swaps"}
                 </Text>
-                <Text style={styles.infoText}>{order.package.quota_swaps} {i18n.language.startsWith("vi") ? "lượt" : "swaps"}</Text>
+                <Text style={styles.infoText}>
+                  {order.package.quota_swaps}{" "}
+                  {i18n.language.startsWith("vi") ? "lượt" : "swaps"}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
@@ -240,25 +351,34 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
           {order.type === "single" && (
             <View style={styles.packageSection}>
               <Text style={styles.packageTitle}>
-                {i18n.language.startsWith("vi") ? "Thông tin lượt đổi" : "Swap Information"}
+                {i18n.language.startsWith("vi")
+                  ? "Thông tin lượt đổi"
+                  : "Swap Information"}
               </Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
                   {i18n.language.startsWith("vi") ? "Loại" : "Type"}
                 </Text>
                 <Text style={styles.infoText}>
-                  {i18n.language.startsWith("vi") ? "Lượt đổi đơn" : "Single Swaps"}
+                  {i18n.language.startsWith("vi")
+                    ? "Lượt đổi đơn"
+                    : "Single Swaps"}
                 </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
                   {i18n.language.startsWith("vi") ? "Số lượng" : "Quantity"}
                 </Text>
-                <Text style={styles.infoText}>{order.quantity} {i18n.language.startsWith("vi") ? "lượt" : "swaps"}</Text>
+                <Text style={styles.infoText}>
+                  {order.quantity}{" "}
+                  {i18n.language.startsWith("vi") ? "lượt" : "swaps"}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>
-                  {i18n.language.startsWith("vi") ? "Giá mỗi lượt" : "Price per swap"}
+                  {i18n.language.startsWith("vi")
+                    ? "Giá mỗi lượt"
+                    : "Price per swap"}
                 </Text>
                 <Text style={styles.infoText}>{formatVnd(25000)}</Text>
               </View>
@@ -269,8 +389,8 @@ export default function OrderDetailsScreen({ navigation, route }: Props) {
           <View style={styles.qrSection}>
             <View style={styles.qrContainer}>
               {order.payment_info?.qr_code ? (
-                <Image 
-                  source={{ uri: order.payment_info.qr_code }} 
+                <Image
+                  source={{ uri: order.payment_info.qr_code }}
                   style={styles.qrCode}
                   resizeMode="contain"
                 />
@@ -507,5 +627,3 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
   },
 });
-
-

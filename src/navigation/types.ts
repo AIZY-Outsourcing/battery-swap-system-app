@@ -3,7 +3,9 @@ export type RootStackParamList = {
   Splash: undefined;
   AuthStack: undefined;
   AppStack: undefined;
-  MainTabs: undefined;
+  MainTabs:
+    | { screen: "Home"; params: { shouldRefreshCredits: boolean } }
+    | undefined;
   // Station screens
   StationDetails: { stationId: string };
   StationMap: {
@@ -37,7 +39,7 @@ export type RootStackParamList = {
   };
   BuySwap: { preset?: number } | undefined;
   BuyPackage: undefined;
-  OrderDetails: { order: any };
+  OrderDetails: { order: any; shouldRefresh?: boolean };
   PaymentSuccess: { order: any };
   // Profile screens
   EditProfile: undefined;
@@ -77,7 +79,7 @@ export type AuthStackParamList = {
 };
 
 export type MainTabParamList = {
-  Home: undefined; // 1. Home (Stations) - Entry point
+  Home: { shouldRefreshCredits?: boolean } | undefined; // 1. Home (Stations) - Entry point
   MyReservations: undefined; // 2. Reservations - Quản lý pin đã đặt
   QRScan: undefined; // 3. Scan QR - CENTER TAB - Action chính
   History: undefined; // 4. History - Swap & Payment History

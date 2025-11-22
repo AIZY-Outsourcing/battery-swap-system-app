@@ -39,7 +39,7 @@ type Props = CompositeScreenProps<
 
 const { width } = Dimensions.get("window");
 
-export default function HomeScreen({ navigation }: Props) {
+export default function HomeScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [batteryType, setBatteryType] = useState<BatteryOpt>("");
@@ -80,6 +80,17 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     fetchSwapCredits();
   }, []);
+
+  // Auto refresh credits when navigating from payment success
+  useEffect(() => {
+    if (route?.params?.shouldRefreshCredits) {
+      console.log("🔄 [HomeScreen] Refreshing credits after payment");
+      fetchSwapCredits();
+
+      // Clear the param to avoid re-triggering on navigation
+      navigation.setParams({ shouldRefreshCredits: undefined });
+    }
+  }, [route?.params?.shouldRefreshCredits, navigation]);
 
   // Calculate total available credits
   const totalCredits =
